@@ -15,12 +15,12 @@ export function RouteCompareCard({
     <section className="route-compare-card">
       <div className="route-compare-header">
         <div>
-          <p className="eyebrow">경로 비교</p>
+          <p className="eyebrow">어느 쪽이 덜 힘들까요</p>
           <h2>{targetLabel}</h2>
           <p>{targetDescription}</p>
         </div>
         <div className="route-distance-badge">
-          <span>목적지 거리</span>
+          <span>목적지까지</span>
           <strong>약 {compare.destinationDistanceMeters}m</strong>
         </div>
       </div>
@@ -32,24 +32,24 @@ export function RouteCompareCard({
           >
             <div className="route-option-top">
               <div className="route-option-title">
-                <span className="card-icon route">{option.id === 'bus-priority' ? 'BUS' : 'AID'}</span>
+                <span className="card-icon route">{option.id === 'bus-priority' ? '버스' : '지원'}</span>
                 <strong>{option.label}</strong>
               </div>
               <span className={`source-badge ${option.recommended ? 'live' : 'mock'}`}>
-                {option.recommended ? '추천안' : '대안'}
+                {option.recommended ? '조금 더 편함' : '다른 선택'}
               </span>
             </div>
             <div className="route-option-stats">
               <p>
-                <span>부담도</span>
+                <span>움직이기</span>
                 <strong>{option.burden}</strong>
               </p>
               <p>
-                <span>비교 점수</span>
+                <span>종합 점수</span>
                 <strong>{option.score}점</strong>
               </p>
               <p>
-                <span>신뢰도</span>
+                <span>정보 믿음도</span>
                 <strong>{option.confidenceLabel}</strong>
               </p>
             </div>

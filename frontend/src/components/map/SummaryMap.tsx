@@ -199,10 +199,10 @@ export function SummaryMap({
           <h2>{selectionMode ? '지도를 눌러 위치를 선택하세요' : '주변 교차로와 이동수단 후보'}</h2>
         </div>
         <div className="map-header-side">
-          <span>{selectionMode ? '선택 모드' : '탐색 모드'}</span>
+          <span>{selectionMode ? '위치 고르는 중' : '주변 보기'}</span>
           <div className="map-source-legend">
-            <small><i className="live" />LIVE</small>
-            <small><i className="mock" />MOCK</small>
+            <small><i className="live" />바로 확인</small>
+            <small><i className="mock" />참고</small>
           </div>
         </div>
       </div>

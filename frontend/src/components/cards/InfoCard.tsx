@@ -8,7 +8,8 @@ type InfoCardProps = {
   meta: string;
   updatedAt: string;
   tone?: 'default' | 'warn' | 'safe';
-  sourceLabel?: string;
+  sourceTone?: 'live' | 'mock' | 'off';
+  sourceText?: string;
   iconLabel?: string;
 };
 
@@ -20,7 +21,8 @@ export function InfoCard({
   meta,
   updatedAt,
   tone = 'default',
-  sourceLabel,
+  sourceText,
+  sourceTone,
   iconLabel,
 }: InfoCardProps) {
   return (
@@ -30,7 +32,7 @@ export function InfoCard({
           {iconLabel ? <span className={`card-icon ${tone}`}>{iconLabel}</span> : null}
           <p className="eyebrow">{eyebrow}</p>
         </div>
-        {sourceLabel ? <span className={`source-badge ${sourceLabel.toLowerCase()}`}>{sourceLabel}</span> : null}
+        {sourceText && sourceTone ? <span className={`source-badge ${sourceTone}`}>{sourceText}</span> : null}
       </div>
       <h2>{title}</h2>
       <strong>{highlight}</strong>

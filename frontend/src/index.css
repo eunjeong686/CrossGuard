@@ -2,25 +2,24 @@
   font-family: "Pretendard Variable", "Noto Sans KR", system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1e293b;
+  color: #172033;
   background:
-    radial-gradient(circle at top left, rgba(255, 243, 199, 0.9), transparent 35%),
-    radial-gradient(circle at top right, rgba(180, 222, 255, 0.7), transparent 30%),
-    linear-gradient(180deg, #f7fbff 0%, #eef4f9 100%);
+    radial-gradient(circle at top left, rgba(242, 247, 238, 0.95), transparent 36%),
+    linear-gradient(180deg, #f5f7f2 0%, #eef2ec 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --surface: rgba(255, 255, 255, 0.84);
-  --surface-strong: rgba(255, 255, 255, 0.94);
-  --border: rgba(15, 23, 42, 0.09);
-  --shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
-  --text-main: #1f2937;
-  --text-muted: #526072;
-  --brand: #0f766e;
-  --brand-dark: #134e4a;
-  --accent: #f59e0b;
-  --danger: #dc2626;
+  --surface: #fbfcf8;
+  --surface-strong: #ffffff;
+  --border: rgba(23, 32, 51, 0.08);
+  --shadow: 0 10px 30px rgba(27, 39, 56, 0.06);
+  --text-main: #172033;
+  --text-muted: #667085;
+  --brand: #1b6b5d;
+  --brand-dark: #154f46;
+  --accent: #b7791f;
+  --danger: #b84c4c;
   --motion-smooth: 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -95,7 +94,6 @@ a {
 .error-panel,
 .scenario-section {
   background: var(--surface);
-  backdrop-filter: blur(14px);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
@@ -151,7 +149,6 @@ a {
 
 .hero-copy-panel,
 .hero-side-panel,
-.principle-card,
 .checkpoint-card {
   display: grid;
   gap: 16px;
@@ -168,13 +165,13 @@ a {
 }
 
 .service-badge {
-  background: rgba(15, 118, 110, 0.12);
+  background: rgba(27, 107, 93, 0.1);
   color: var(--brand-dark);
 }
 
 .status-chip {
-  background: rgba(245, 158, 11, 0.14);
-  color: #8a5404;
+  background: rgba(183, 121, 31, 0.12);
+  color: #8a5a18;
 }
 
 .masthead-copy > div:first-child {
@@ -200,18 +197,18 @@ a {
 }
 
 .masthead h1 {
-  font-size: clamp(2rem, 4vw, 3.6rem);
-  line-height: 1.05;
+  font-size: clamp(1.9rem, 3.7vw, 3.1rem);
+  line-height: 1.12;
   margin-bottom: 14px;
 }
 
 .eyebrow {
   margin: 0 0 10px;
   color: var(--brand-dark);
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 
 .masthead p,
@@ -231,8 +228,8 @@ a {
   max-width: 340px;
   padding: 18px;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(248, 113, 113, 0.08), rgba(255, 255, 255, 0.75));
-  border: 1px solid rgba(220, 38, 38, 0.15);
+  background: #fff7f6;
+  border: 1px solid rgba(184, 76, 76, 0.16);
 }
 
 .hero-side-panel .safety-panel {
@@ -249,25 +246,21 @@ a {
   min-width: 220px;
 }
 
-.hero-proof-grid,
-.focus-strip,
-.checkpoint-list {
+.hero-proof-grid {
   display: grid;
   gap: 14px;
 }
 
 .hero-proof-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .proof-card,
-.focus-card,
-.principle-card,
 .checkpoint-card {
-  padding: 18px;
+  padding: 16px;
   border-radius: 24px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.78);
+  background: #ffffff;
   transition:
     transform var(--motion-smooth),
     box-shadow var(--motion-smooth),
@@ -275,8 +268,6 @@ a {
 }
 
 .proof-card:hover,
-.focus-card:hover,
-.scenario-card:hover,
 .info-card:hover,
 .route-option-card:hover,
 .preset-button:hover,
@@ -288,64 +279,25 @@ a {
 .proof-card span,
 .checkpoint-item span {
   color: var(--brand-dark);
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 
 .proof-card strong,
-.focus-card h2,
 .checkpoint-item strong {
   color: #0f172a;
 }
 
 .proof-card strong {
   display: block;
-  margin: 8px 0 6px;
-  font-size: 1.2rem;
-}
-
-.focus-strip {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.focus-card {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 250, 255, 0.82));
-}
-
-.focus-card h2 {
-  margin: 0 0 8px;
-  font-size: 1.2rem;
-  line-height: 1.3;
-}
-
-.principle-list {
-  margin: 0;
-  padding-left: 18px;
-  color: var(--text-muted);
-  display: grid;
-  gap: 10px;
+  margin: 6px 0 4px;
+  font-size: 1.02rem;
 }
 
 .checkpoint-card {
-  background:
-    linear-gradient(145deg, rgba(15, 118, 110, 0.08), rgba(255, 255, 255, 0.92));
-}
-
-.checkpoint-list {
-  grid-template-columns: 1fr;
-}
-
-.checkpoint-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: #f7fbf8;
 }
 
 .control-strip {
@@ -399,18 +351,23 @@ a {
   gap: 16px;
 }
 
-.scenario-card {
-  padding: 18px;
-  border-radius: 22px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(240, 249, 255, 0.84));
+.scenario-grid.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.scenario-quick-button {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(15, 23, 42, 0.07);
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  text-align: left;
   transition:
     transform var(--motion-smooth),
     box-shadow var(--motion-smooth),
-    border-color var(--motion-smooth);
+    border-color var(--motion-smooth),
+    background-color var(--motion-smooth);
 }
 
 .scenario-step {
@@ -420,34 +377,25 @@ a {
   border-radius: 999px;
   background: rgba(15, 118, 110, 0.1);
   color: var(--brand-dark);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 
-.scenario-card strong {
+.scenario-quick-button strong {
   color: #0f172a;
-  font-size: 1.02rem;
+  font-size: 0.98rem;
 }
 
-.scenario-card p {
+.scenario-quick-button small {
   color: var(--text-muted);
 }
 
-.scenario-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.scenario-meta span {
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.84);
-  color: var(--text-muted);
-  font-size: 0.84rem;
-  font-weight: 700;
+.scenario-quick-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  border-color: rgba(15, 118, 110, 0.16);
 }
 
 .preset-strip,
@@ -460,8 +408,8 @@ a {
 .demo-callout {
   padding: 14px 16px;
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(14, 165, 233, 0.08));
-  border: 1px solid rgba(15, 118, 110, 0.18);
+  background: #f4faf8;
+  border: 1px solid rgba(27, 107, 93, 0.14);
 }
 
 .demo-callout strong,
@@ -492,7 +440,7 @@ a {
   padding: 12px 14px;
   border-radius: 16px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.8);
+  background: #ffffff;
   text-align: left;
   transition:
     transform var(--motion-smooth),
@@ -512,8 +460,8 @@ a {
 }
 
 .preset-button.active {
-  border-color: rgba(15, 118, 110, 0.4);
-  background: rgba(15, 118, 110, 0.12);
+  border-color: rgba(27, 107, 93, 0.3);
+  background: #f2f8f5;
 }
 
 .primary-button,
@@ -536,13 +484,14 @@ a {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, var(--brand) 0%, #0f5f8a 100%);
+  background: linear-gradient(135deg, #1b6b5d 0%, #295b88 100%);
   color: white;
+  box-shadow: 0 10px 24px rgba(41, 91, 136, 0.16);
 }
 
 .secondary-button {
-  background: white;
-  border-color: rgba(15, 118, 110, 0.2);
+  background: #ffffff;
+  border-color: rgba(27, 107, 93, 0.16);
   color: var(--brand-dark);
 }
 
@@ -550,7 +499,7 @@ a {
   flex: 1;
   min-width: 180px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.72);
+  background: #ffffff;
   border-color: rgba(15, 23, 42, 0.08);
   display: grid;
   gap: 4px;
@@ -568,8 +517,8 @@ a {
 }
 
 .mode-toggle.active {
-  background: rgba(15, 118, 110, 0.13);
-  border-color: rgba(15, 118, 110, 0.4);
+  background: #f2f8f5;
+  border-color: rgba(27, 107, 93, 0.28);
 }
 
 .mode-toggle::after,
@@ -646,8 +595,8 @@ a {
   gap: 18px;
   align-items: stretch;
   background:
-    radial-gradient(circle at top right, rgba(15, 118, 110, 0.14), transparent 32%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 249, 255, 0.9));
+    radial-gradient(circle at top right, rgba(27, 107, 93, 0.08), transparent 28%),
+    linear-gradient(180deg, #ffffff, #f8fbf7);
 }
 
 .hero-main {
@@ -678,7 +627,7 @@ a {
 .hero-factor-list p {
   padding: 11px 14px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.76);
+  background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.06);
 }
 
@@ -691,7 +640,7 @@ a {
 .hero-guidance-item {
   padding: 14px 16px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.74);
+  background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
@@ -711,7 +660,7 @@ a {
   min-width: 150px;
   padding: 18px;
   border-radius: 24px;
-  background: linear-gradient(160deg, rgba(245, 158, 11, 0.18), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(160deg, #fff8eb, #ffffff);
   text-align: right;
   display: grid;
   align-content: space-between;
@@ -794,69 +743,28 @@ a {
   overflow: hidden;
 }
 
-.data-context-card {
-  padding: 18px 20px;
-  border-radius: 24px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--shadow);
-}
-
 .route-compare-section {
   display: grid;
   gap: 14px;
 }
 
 .route-compare-controls {
-  padding: 18px 20px;
+  padding: 16px 18px;
   border-radius: 24px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.86);
+  background: #fbfcf8;
   box-shadow: var(--shadow);
   display: grid;
   gap: 14px;
 }
 
-.context-tags {
-  margin: 10px 0 12px;
-}
-
-.context-tags span {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(15, 118, 110, 0.1);
-  color: var(--brand-dark);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.context-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 6px 0 12px;
-}
-
-.context-summary-grid article {
-  padding: 14px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-}
-
-.context-summary-grid strong {
-  display: block;
-  margin-bottom: 6px;
-  color: #0f172a;
-}
-
 .route-compare-card {
-  padding: 20px;
+  padding: 18px;
   border-radius: 24px;
   border: 1px solid var(--border);
   background:
-    radial-gradient(circle at top right, rgba(245, 158, 11, 0.1), transparent 30%),
-    rgba(255, 255, 255, 0.9);
+    radial-gradient(circle at top right, rgba(183, 121, 31, 0.08), transparent 30%),
+    #ffffff;
   box-shadow: var(--shadow);
   display: grid;
   gap: 16px;
@@ -870,10 +778,10 @@ a {
 }
 
 .route-distance-badge {
-  min-width: 170px;
-  padding: 16px;
+  min-width: 150px;
+  padding: 14px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.86);
+  background: #fcfcfa;
   border: 1px solid rgba(15, 23, 42, 0.08);
   text-align: right;
 }
@@ -897,9 +805,9 @@ a {
 }
 
 .route-option-card {
-  padding: 18px;
+  padding: 16px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.88);
+  background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.07);
   display: grid;
   gap: 12px;
@@ -925,7 +833,7 @@ a {
 
 .route-option-top strong {
   color: #0f172a;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .route-option-stats {
@@ -935,9 +843,9 @@ a {
 }
 
 .route-option-stats p {
-  padding: 12px;
+  padding: 10px;
   border-radius: 16px;
-  background: rgba(247, 250, 252, 0.94);
+  background: #f7f9f7;
   border: 1px solid rgba(15, 23, 42, 0.06);
 }
 
@@ -955,14 +863,14 @@ a {
 .route-tags span {
   padding: 7px 10px;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.1);
+  background: rgba(27, 107, 93, 0.1);
   color: var(--brand-dark);
   font-size: 0.84rem;
   font-weight: 700;
 }
 
 .route-tags.subdued span {
-  background: rgba(226, 232, 240, 0.7);
+  background: #eef2f0;
   color: #475569;
 }
 
@@ -973,7 +881,7 @@ a {
 .map-header span {
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.1);
+  background: rgba(27, 107, 93, 0.1);
   color: var(--brand-dark);
   font-size: 0.88rem;
   font-weight: 700;
@@ -998,7 +906,7 @@ a {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
+  background: #ffffff;
   color: var(--text-muted);
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
@@ -1050,8 +958,8 @@ a {
 }
 
 .info-card {
-  padding: 22px;
-  background: rgba(255, 255, 255, 0.9);
+  padding: 18px;
+  background: #ffffff;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   display: grid;
@@ -1065,7 +973,7 @@ a {
 }
 
 .info-card strong {
-  font-size: 1.4rem;
+  font-size: 1.22rem;
   color: #0f172a;
 }
 
@@ -1103,7 +1011,7 @@ a {
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(254, 252, 232, 0.86));
+  background: linear-gradient(180deg, #f5f8f5, #eef3ee);
   outline: none;
 }
 
@@ -1129,7 +1037,7 @@ a {
 .map-stat-pill {
   padding: 10px 12px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
+  background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
 }
 
@@ -1229,7 +1137,7 @@ a {
   width: min(300px, calc(100% - 28px));
   padding: 14px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.9);
+  background: #ffffff;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
   display: grid;
   gap: 8px;
@@ -1277,7 +1185,6 @@ a {
 
 @media (max-width: 960px) {
   .hero-stage,
-  .focus-strip,
   .hero-proof-grid,
   .hero-guidance {
     grid-template-columns: 1fr;
@@ -1286,10 +1193,6 @@ a {
   .masthead-copy,
   .hero-card {
     flex-direction: column;
-  }
-
-  .context-summary-grid {
-    grid-template-columns: 1fr;
   }
 
   .route-options-grid {
@@ -1361,17 +1264,15 @@ a {
   }
 
   .hero-proof-grid,
-  .focus-strip,
   .preset-strip,
   .scenario-grid {
     gap: 12px;
   }
 
-  .scenario-card,
+  .scenario-quick-button,
   .info-card,
   .route-option-card,
-  .proof-card,
-  .focus-card {
+  .proof-card {
     padding: 16px;
   }
 
@@ -1383,11 +1284,6 @@ a {
   .map-board {
     height: 300px;
     margin: 16px;
-  }
-
-  .checkpoint-item {
-    flex-direction: column;
-    align-items: start;
   }
 
   .simple-mode-header {
