@@ -22,14 +22,14 @@ export function SummaryHeroCard({ summary }: SummaryHeroCardProps) {
     <section className={`hero-card ${burdenTone}`}>
       <div className="hero-main">
         <div className="hero-title-block">
-          <span className={`hero-emblem ${burdenTone}`}>한눈</span>
-          <p className="eyebrow">지금 이동은 어떤 편인가요</p>
+          <span className={`hero-emblem ${burdenTone}`}>지금</span>
+          <p className="eyebrow">지금 이동 느낌</p>
           <h1>{summary.movementBurden.label}</h1>
           <p className="hero-reason">{summary.movementBurden.reason}</p>
         </div>
         <div className="hero-guidance">
           <div className="hero-guidance-item">
-            <span>지금 먼저 볼 것</span>
+            <span>먼저 보기</span>
             <strong>
               {summary.movementBurden.label === '높음'
                 ? '이동지원과 다음 이동 수단을 먼저 살펴보세요'
@@ -51,16 +51,16 @@ export function SummaryHeroCard({ summary }: SummaryHeroCardProps) {
         <div className="hero-sources">
           {sourceEntries.map(([label, source]) => (
             <span key={label} className={`source-badge ${source}`}>
-              {label} {source === 'live' ? '실시간' : '예시'}
+              {label} {source === 'live' ? '바로 확인' : '참고'}
             </span>
           ))}
         </div>
       </div>
       <div className="score-badge">
-        <span>종합 보기</span>
+        <span>한눈에 보기</span>
         <strong>{summary.movementBurden.score}점</strong>
-        <em>정보 믿음도 {summary.movementBurden.confidenceLabel}</em>
-        <small>신호, 버스, 이동지원을 함께 보고 정리한 결과입니다.</small>
+        <em>안내 믿음 {summary.movementBurden.confidenceLabel}</em>
+        <small>지금 주변 정보를 함께 보고 정리했어요.</small>
       </div>
     </section>
   );

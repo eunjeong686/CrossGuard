@@ -15,7 +15,7 @@ export function RouteCompareCard({
     <section className="route-compare-card">
       <div className="route-compare-header">
         <div>
-          <p className="eyebrow">어느 쪽이 덜 힘들까요</p>
+          <p className="eyebrow">조금 더 편한 쪽</p>
           <h2>{targetLabel}</h2>
           <p>{targetDescription}</p>
         </div>
@@ -36,20 +36,20 @@ export function RouteCompareCard({
                 <strong>{option.label}</strong>
               </div>
               <span className={`source-badge ${option.recommended ? 'live' : 'mock'}`}>
-                {option.recommended ? '조금 더 편함' : '다른 선택'}
+                {option.recommended ? '조금 더 편해요' : '다른 선택'}
               </span>
             </div>
             <div className="route-option-stats">
               <p>
-                <span>움직이기</span>
+                <span>느낌</span>
                 <strong>{option.burden}</strong>
               </p>
               <p>
-                <span>종합 점수</span>
+                <span>점수</span>
                 <strong>{option.score}점</strong>
               </p>
               <p>
-                <span>정보 믿음도</span>
+                <span>안내 믿음</span>
                 <strong>{option.confidenceLabel}</strong>
               </p>
             </div>

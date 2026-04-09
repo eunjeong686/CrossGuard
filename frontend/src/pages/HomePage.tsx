@@ -47,11 +47,10 @@ const DEMO_PRESETS: DemoPreset[] = [
   },
 ];
 
-type DemoScenario = {
+type QuickView = {
   id: 'senior-bus' | 'guardian-mode' | 'signal-safety';
   title: string;
-  description: string;
-  actionLabel: string;
+  caption: string;
   presetId: DemoPreset['id'];
   largeText: boolean;
   simpleMode: boolean;
@@ -64,30 +63,27 @@ type CompareTarget = {
   offset: { lat: number; lng: number };
 };
 
-const DEMO_SCENARIOS: DemoScenario[] = [
+const QUICK_VIEWS: QuickView[] = [
   {
     id: 'senior-bus',
-    title: '버스를 타러 가기 전에 보기',
-    description: '횡단보도와 버스 시간을 같이 보면서 움직일 수 있어요.',
-    actionLabel: '버스 먼저 보기',
+    title: '버스 먼저',
+    caption: '신호와 버스를 함께 봐요',
     presetId: 'ulsan-live',
     largeText: false,
     simpleMode: false,
   },
   {
     id: 'guardian-mode',
-    title: '보호자와 함께 보기',
-    description: '글자를 키우고 화면을 단순하게 바꿔서 바로 보여줍니다.',
-    actionLabel: '크고 간단하게 보기',
+    title: '크고 간단하게',
+    caption: '글자를 키우고 덜 복잡하게',
     presetId: 'seoul-mobility',
     largeText: true,
     simpleMode: true,
   },
   {
     id: 'signal-safety',
-    title: '횡단 전에 한 번 더 보기',
-    description: '신호 정보는 참고용으로만 보여주고 꼭 확인할 점을 함께 안내합니다.',
-    actionLabel: '횡단 전 정보 보기',
+    title: '횡단 전에',
+    caption: '꼭 확인할 점부터 볼게요',
     presetId: 'ulsan-live',
     largeText: false,
     simpleMode: false,
@@ -206,13 +202,13 @@ export function HomePage() {
     compareOptions,
   );
   const compare = compareData?.data;
-  const primaryScenario = DEMO_SCENARIOS[0];
-  function activateScenario(scenario: DemoScenario) {
-    setSelectedPresetId(scenario.presetId);
-    setLargeText(scenario.largeText);
-    setSimpleMode(scenario.simpleMode);
+  const primaryQuickView = QUICK_VIEWS[0];
+  function activateQuickView(quickView: QuickView) {
+    setSelectedPresetId(quickView.presetId);
+    setLargeText(quickView.largeText);
+    setSimpleMode(quickView.simpleMode);
 
-    const preset = DEMO_PRESETS.find((item) => item.id === scenario.presetId);
+    const preset = DEMO_PRESETS.find((item) => item.id === quickView.presetId);
     if (preset?.coordinates) {
       setManualLocation(preset.coordinates);
     }
@@ -229,16 +225,16 @@ export function HomePage() {
             </div>
             <div className="masthead-copy">
               <div>
-                <p className="eyebrow">SafeCross Mobility</p>
-                <h1>횡단보도, 버스, 이동지원 정보를 한눈에 보여주는 생활 도우미</h1>
+                <p className="eyebrow">걷기 전에 먼저 보기</p>
+                <h1>신호, 버스, 이동지원 정보를 한 번에 살펴보세요</h1>
                 <p className="hero-lead">
-                  멀리 걷기 전에, 버스를 기다리기 전에, 다른 이동 수단이 필요한지 먼저 살펴볼 수
-                  있게 핵심 정보만 모아 보여줍니다.
+                  멀리 걷기 전에 필요한 정보만 먼저 보여줘서, 지금 조금 더 편한 선택을 고를 수 있게
+                  돕습니다.
                 </p>
               </div>
             </div>
             <div className="hero-action-row">
-              <button className="primary-button hero-button" onClick={() => activateScenario(primaryScenario)} type="button">
+              <button className="primary-button hero-button" onClick={() => activateQuickView(primaryQuickView)} type="button">
                 지금 보기
               </button>
               <button
@@ -252,17 +248,18 @@ export function HomePage() {
                 현재 위치 보기
               </button>
             </div>
-            <div className="hero-proof-grid compact">
-              <article className="proof-card">
-                <span>먼저 보기</span>
-                <strong>신호와 버스</strong>
-                <p>횡단하기 전과 버스를 기다릴 때 필요한 정보부터 보여줍니다.</p>
-              </article>
-              <article className="proof-card">
-                <span>같이 보기</span>
-                <strong>글자 크게, 화면 간단히</strong>
-                <p>부모님이나 보호자와 볼 때 헷갈리지 않도록 바로 바꿀 수 있습니다.</p>
-              </article>
+            <div className="quick-view-row">
+              {QUICK_VIEWS.map((quickView) => (
+                <button
+                  key={quickView.id}
+                  className="quick-view-chip"
+                  onClick={() => activateQuickView(quickView)}
+                  type="button"
+                >
+                  <strong>{quickView.title}</strong>
+                  <small>{quickView.caption}</small>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -271,9 +268,9 @@ export function HomePage() {
               <strong>앱보다 현장 신호를 먼저 확인해 주세요.</strong>
               <p>이 화면은 참고용이고, 실제 신호와 주변 상황이 가장 중요합니다.</p>
             </div>
-            <div className="checkpoint-card soft">
-              <p className="eyebrow">도움말</p>
-              <p>지금 필요한 정보부터 보고, 조금 더 편한 선택을 고를 수 있어요.</p>
+            <div className="hero-side-note">
+              <span>지금 할 수 있는 일</span>
+              <strong>위치를 고르고, 글자를 키우고, 덜 힘든 쪽을 비교할 수 있어요.</strong>
             </div>
           </div>
         </section>
@@ -326,12 +323,6 @@ export function HomePage() {
                 </button>
               ))}
             </div>
-            {selectedPreset ? (
-              <div className="demo-callout">
-                <strong>{selectedPreset.label}</strong>
-                <p>{selectedPreset.description}.</p>
-              </div>
-            ) : null}
           </div>
 
           <div className="mode-strip">
@@ -349,29 +340,6 @@ export function HomePage() {
               label="간단히 보기"
               onClick={toggleSimpleMode}
             />
-          </div>
-        </section>
-
-        <section className="scenario-section">
-          <div className="scenario-header">
-            <div>
-              <p className="eyebrow">자주 쓰는 보기</p>
-              <h2>원하는 방식으로 바로 바꿔 보기</h2>
-            </div>
-          </div>
-          <div className="scenario-grid compact">
-            {DEMO_SCENARIOS.map((scenario, index) => (
-              <button
-                className="scenario-quick-button"
-                key={scenario.id}
-                onClick={() => activateScenario(scenario)}
-                type="button"
-              >
-                <span className="scenario-step">바로 보기 {index + 1}</span>
-                <strong>{scenario.title}</strong>
-                <small>{scenario.description}</small>
-              </button>
-            ))}
           </div>
         </section>
 
@@ -412,8 +380,8 @@ export function HomePage() {
                 <section className="route-compare-section">
                   <div className="route-compare-controls">
                     <div>
-                      <p className="eyebrow">비교해서 보기</p>
-                      <h2>어느 쪽이 조금 더 편한지 비교해 볼 수 있어요</h2>
+                      <p className="eyebrow">비교 보기</p>
+                      <h2>어느 쪽이 조금 덜 힘든지 볼 수 있어요</h2>
                     </div>
                     <div className="preset-strip">
                       {COMPARE_TARGETS.map((target) => (
