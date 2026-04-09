@@ -1,23 +1,38 @@
 import { Router } from 'express';
+import { getRouteComparison } from '../services/routesCompareService.js';
+import type { Coordinates } from '../types/internal.js';
+import { HttpError } from '../utils/errors.js';
 import { buildResponse } from '../utils/response.js';
+import { getStdgOverridesFromRequest } from '../utils/stdg.js';
 
 export const routesCompareRouter = Router();
 
-routesCompareRouter.get('/compare', (_request, response) => {
-  response.json(
-    buildResponse({
-      options: [
-        {
-          label: '버스 우선 이동',
-          burden: '보통',
-          note: '가까운 버스가 있으나 정류장 접근 시간이 다소 필요합니다.',
-        },
-        {
-          label: '이동지원 우선 검토',
-          burden: '낮음',
-          note: '대체 수단 가용 차량이 있어 보수적으로 더 편안한 선택지입니다.',
-        },
-      ],
-    }),
-  );
+function parseCoordinate(value: unknown, name: string) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    throw new HttpError(400, `${name} 쿼리 파라미터가 필요합니다.`);
+  }
+
+  return parsed;
+}
+
+function parseCompareCoordinates(query: Record<string, unknown>) {
+  const origin: Coordinates = {
+    lat: parseCoordinate(query.originLat, 'originLat'),
+    lng: parseCoordinate(query.originLng, 'originLng'),
+  };
+  const destination: Coordinates = {
+    lat: parseCoordinate(query.destLat, 'destLat'),
+    lng: parseCoordinate(query.destLng, 'destLng'),
+  };
+
+  return { origin, destination };
+}
+
+routesCompareRouter.get('/compare', async (request, response) => {
+  const { origin, destination } = parseCompareCoordinates(request.query as Record<string, unknown>);
+  const stdg = getStdgOverridesFromRequest(request);
+
+  response.json(buildResponse(await getRouteComparison(origin, destination, stdg)));
 });

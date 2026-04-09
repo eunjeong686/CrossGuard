@@ -66,6 +66,9 @@ export type SummaryData = {
     score: number;
     label: '낮음' | '보통' | '높음';
     reason: string;
+    confidenceLabel: '높음' | '보통' | '낮음';
+    freshnessMinutes: number | null;
+    factors: string[];
   };
   topSignal: SignalData | null;
   topBus: BusData | null;
@@ -85,4 +88,24 @@ export type ServiceStatus = {
   apiKeyConfigured: boolean;
   liveAdapterReady: boolean;
   fallbackAvailable: boolean;
+};
+
+export type RouteCompareOption = {
+  id: 'bus-priority' | 'mobility-priority';
+  label: string;
+  burden: '낮음' | '보통' | '높음';
+  score: number;
+  note: string;
+  recommended: boolean;
+  includedServices: ServiceName[];
+  confidenceLabel: '높음' | '보통' | '낮음';
+  sourceLabels: string[];
+};
+
+export type RouteCompareData = {
+  origin: Coordinates;
+  destination: Coordinates;
+  destinationDistanceMeters: number;
+  recommendedOptionId: RouteCompareOption['id'];
+  options: RouteCompareOption[];
 };

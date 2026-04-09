@@ -68,6 +68,9 @@ export type SummaryPayload = {
     score: number;
     label: BurdenLabel;
     reason: string;
+    confidenceLabel: BurdenLabel;
+    freshnessMinutes: number | null;
+    factors: string[];
   };
   topSignal: SignalCard | null;
   topBus: BusCard | null;
@@ -76,4 +79,24 @@ export type SummaryPayload = {
   buses: BusCard[];
   mobilityCenters: MobilityCard[];
   disclaimer: string;
+};
+
+export type RouteCompareOption = {
+  id: 'bus-priority' | 'mobility-priority';
+  label: string;
+  burden: BurdenLabel;
+  score: number;
+  note: string;
+  recommended: boolean;
+  includedServices: Array<'signals' | 'buses' | 'mobility'>;
+  confidenceLabel: BurdenLabel;
+  sourceLabels: string[];
+};
+
+export type RouteComparePayload = {
+  origin: Coordinates;
+  destination: Coordinates;
+  destinationDistanceMeters: number;
+  recommendedOptionId: RouteCompareOption['id'];
+  options: RouteCompareOption[];
 };

@@ -9,6 +9,7 @@ type InfoCardProps = {
   updatedAt: string;
   tone?: 'default' | 'warn' | 'safe';
   sourceLabel?: string;
+  iconLabel?: string;
 };
 
 export function InfoCard({
@@ -20,11 +21,15 @@ export function InfoCard({
   updatedAt,
   tone = 'default',
   sourceLabel,
+  iconLabel,
 }: InfoCardProps) {
   return (
     <article className={`info-card ${tone}`}>
       <div className="card-heading">
-        <p className="eyebrow">{eyebrow}</p>
+        <div className="card-heading-main">
+          {iconLabel ? <span className={`card-icon ${tone}`}>{iconLabel}</span> : null}
+          <p className="eyebrow">{eyebrow}</p>
+        </div>
         {sourceLabel ? <span className={`source-badge ${sourceLabel.toLowerCase()}`}>{sourceLabel}</span> : null}
       </div>
       <h2>{title}</h2>

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { InfoCard } from '../components/cards/InfoCard';
+import { RouteCompareCard } from '../components/cards/RouteCompareCard';
 import { SimpleModeCard } from '../components/cards/SimpleModeCard';
 import { SummaryHeroCard } from '../components/cards/SummaryHeroCard';
 import { ModeToggle } from '../components/common/ModeToggle';
 import { AppShell } from '../components/layout/AppShell';
 import { SummaryMap } from '../components/map/SummaryMap';
 import { useLocation } from '../hooks/useLocation';
+import { useRouteCompare } from '../hooks/useRouteCompare';
 import { useSummary } from '../hooks/useSummary';
 import { useUiStore } from '../stores/uiStore';
 import { formatCoordinates, formatRelativeTime } from '../utils/format';
@@ -55,6 +57,13 @@ type DemoScenario = {
   simpleMode: boolean;
 };
 
+type CompareTarget = {
+  id: 'bus-stop' | 'support-center' | 'safe-crossing';
+  label: string;
+  description: string;
+  offset: { lat: number; lng: number };
+};
+
 const DEMO_SCENARIOS: DemoScenario[] = [
   {
     id: 'senior-bus',
@@ -85,6 +94,34 @@ const DEMO_SCENARIOS: DemoScenario[] = [
   },
 ];
 
+const PLAN_CHECKPOINTS = [
+  '위치 기반 조회와 수동 위치 선택',
+  '신호·버스·이동지원 통합 카드',
+  '큰 글씨·단순 화면 접근성 모드',
+  '실데이터 데모 프리셋과 출처 표기',
+] as const;
+
+const COMPARE_TARGETS: CompareTarget[] = [
+  {
+    id: 'bus-stop',
+    label: '가까운 버스 정류장 방향 비교',
+    description: '버스에 맞춰 움직일지, 이동지원으로 우회할지 비교합니다.',
+    offset: { lat: 0.0012, lng: -0.0008 },
+  },
+  {
+    id: 'support-center',
+    label: '이동지원 센터 연결 지점 비교',
+    description: '이동지원 접근성이 있는 방향에서 더 편한 선택지를 찾습니다.',
+    offset: { lat: -0.001, lng: 0.0009 },
+  },
+  {
+    id: 'safe-crossing',
+    label: '안전한 횡단 우선 비교',
+    description: '신호와 걷는 부담을 함께 보수적으로 따져봅니다.',
+    offset: { lat: 0.0006, lng: 0.0012 },
+  },
+];
+
 function getSourceLabel(source: DataOrigin) {
   if (source === 'live') {
     return 'LIVE';
@@ -109,6 +146,8 @@ export function HomePage() {
     status,
   } = useLocation();
   const [selectedPresetId, setSelectedPresetId] = useState<DemoPreset['id'] | null>(null);
+  const [selectedCompareTargetId, setSelectedCompareTargetId] =
+    useState<CompareTarget['id']>('bus-stop');
   const {
     largeText,
     simpleMode,
@@ -137,6 +176,35 @@ export function HomePage() {
     summaryOptions,
   );
   const summary = data?.data;
+  const selectedCompareTarget =
+    COMPARE_TARGETS.find((target) => target.id === selectedCompareTargetId) ?? COMPARE_TARGETS[0];
+  const compareDestination = {
+    lat: activeCoordinates.lat + selectedCompareTarget.offset.lat,
+    lng: activeCoordinates.lng + selectedCompareTarget.offset.lng,
+  };
+  const compareOptions = selectedPreset
+    ? {
+        signalStdgCd: selectedPreset.signalStdgCd,
+        busStdgCd: selectedPreset.busStdgCd,
+        mobilityStdgCd: selectedPreset.mobilityStdgCd,
+      }
+    : undefined;
+  const {
+    data: compareData,
+    isLoading: isCompareLoading,
+    isError: isCompareError,
+  } = useRouteCompare(
+    activeCoordinates.lat,
+    activeCoordinates.lng,
+    compareDestination.lat,
+    compareDestination.lng,
+    compareOptions,
+  );
+  const compare = compareData?.data;
+  const primaryScenario = DEMO_SCENARIOS[0];
+  const selectedSummaryText = selectedPreset
+    ? `${selectedPreset.label}에서는 ${visibleCards.join(', ')} 카드만 발표 흐름에 맞게 강조합니다.`
+    : '현재 위치 기준으로 3개 데이터 축을 함께 조회합니다.';
 
   function activateScenario(scenario: DemoScenario) {
     setSelectedPresetId(scenario.presetId);
@@ -152,25 +220,102 @@ export function HomePage() {
   return (
     <AppShell largeText={largeText}>
       <main className="page">
-        <section className="masthead">
-          <div className="badge-row">
-            <span className="service-badge">참고용 이동 보조 서비스</span>
-            <span className="status-chip">{isFetching ? '데이터 갱신 중' : '짧은 캐시 활성화'}</span>
-          </div>
-          <div className="masthead-copy">
-            <div>
-              <p className="eyebrow">SafeCross Mobility</p>
-              <h1>교통약자와 보호자를 위한 보조형 이동 지원 웹앱</h1>
-              <p>
-                신호 참고 정보, 버스 여유 상태, 이동지원 수단 가능성을 한 화면에 묶어
-                이동 전후 의사결정 부담을 줄이는 MVP입니다.
-              </p>
+        <section className="masthead hero-stage">
+          <div className="hero-copy-panel">
+            <div className="badge-row">
+              <span className="service-badge">참고용 이동 보조 서비스</span>
+              <span className="status-chip">{isFetching ? '데이터 갱신 중' : '실시간 데모 준비 완료'}</span>
             </div>
+            <div className="masthead-copy">
+              <div>
+                <p className="eyebrow">SafeCross Mobility</p>
+                <h1>교통약자와 보호자가 이동 전후에 덜 불안한 선택을 하도록 돕는 웹앱</h1>
+                <p className="hero-lead">
+                  계획서의 핵심인 신호 참고 정보, 버스 여유 상태, 이동지원 대체 수단을 한 화면에
+                  묶어 지금 가장 필요한 판단만 먼저 보여줍니다.
+                </p>
+              </div>
+            </div>
+            <div className="hero-action-row">
+              <button className="primary-button hero-button" onClick={() => activateScenario(primaryScenario)} type="button">
+                {primaryScenario.actionLabel}
+              </button>
+              <button
+                className="secondary-button hero-button"
+                onClick={() => {
+                  setSelectedPresetId(null);
+                  requestCurrentLocation();
+                }}
+                type="button"
+              >
+                현재 위치로 바로 시작
+              </button>
+            </div>
+            <div className="hero-proof-grid">
+              <article className="proof-card">
+                <span>실데이터 데모</span>
+                <strong>울산 + 서울</strong>
+                <p>울산은 신호·버스, 서울은 이동지원을 실연동으로 시연합니다.</p>
+              </article>
+              <article className="proof-card">
+                <span>접근성 모드</span>
+                <strong>큰 글씨 + 단순 화면</strong>
+                <p>보호자와 고령 사용자 시나리오를 버튼 한 번으로 전환합니다.</p>
+              </article>
+              <article className="proof-card">
+                <span>심사 준비도</span>
+                <strong>{DEMO_SCENARIOS.length}개 데모 흐름</strong>
+                <p>발표에서 바로 누를 수 있는 시나리오 시작 버튼을 준비했습니다.</p>
+              </article>
+            </div>
+          </div>
+
+          <div className="hero-side-panel">
             <div className="safety-panel">
               <strong>현장 신호를 반드시 우선 확인하세요.</strong>
               <p>신호 및 도착 정보는 참고용이며 실제 현장 상황과 차이가 있을 수 있습니다.</p>
             </div>
+            <div className="principle-card">
+              <p className="eyebrow">제품 원칙</p>
+              <ul className="principle-list">
+                <li>건너라고 지시하지 않고 참고용 정보만 제공합니다.</li>
+                <li>데이터 출처를 LIVE, MOCK, OFF로 명확히 구분합니다.</li>
+                <li>정보가 부족하면 단정하지 않고 확인 필요로 표시합니다.</li>
+              </ul>
+            </div>
+            <div className="checkpoint-card">
+              <div className="card-heading">
+                <p className="eyebrow">계획서 핵심 구현</p>
+                <span className="service-badge">진행 중</span>
+              </div>
+              <div className="checkpoint-list">
+                {PLAN_CHECKPOINTS.map((checkpoint) => (
+                  <div className="checkpoint-item" key={checkpoint}>
+                    <strong>{checkpoint}</strong>
+                    <span>완료</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+        </section>
+
+        <section className="focus-strip">
+          <article className="focus-card">
+            <p className="eyebrow">핵심 1</p>
+            <h2>지금 주변에서 참고할 수 있는 신호 정보</h2>
+            <p>보행신호 상태와 잔여시간을 안전 문구와 함께 짧게 보여줍니다.</p>
+          </article>
+          <article className="focus-card">
+            <p className="eyebrow">핵심 2</p>
+            <h2>이번 버스를 탈 수 있을지 판단하는 여유 상태</h2>
+            <p>복잡한 ETA 대신 교통약자 기준으로 여유 있음, 주의 필요, 촉박으로 정리합니다.</p>
+          </article>
+          <article className="focus-card">
+            <p className="eyebrow">핵심 3</p>
+            <h2>불편할 때 바로 볼 수 있는 대체 이동지원 수단</h2>
+            <p>이용 가능한 차량 수와 센터 정보를 통해 버스 외 대안을 함께 제시합니다.</p>
+          </article>
         </section>
 
         <section className="control-strip">
@@ -237,12 +382,14 @@ export function HomePage() {
             <ModeToggle
               active={largeText}
               description="글자를 키우고 주요 여백을 넓힙니다."
+              iconLabel="TXT"
               label="큰 글씨 모드"
               onClick={toggleLargeText}
             />
             <ModeToggle
               active={simpleMode}
               description="핵심 정보 3줄만 우선 보여줍니다."
+              iconLabel="SIM"
               label="단순 화면 모드"
               onClick={toggleSimpleMode}
             />
@@ -253,15 +400,21 @@ export function HomePage() {
           <div className="scenario-header">
             <div>
               <p className="eyebrow">심사 데모 시작</p>
-              <h2>계획서 기준 3개 시나리오를 바로 재현할 수 있게 준비했습니다</h2>
+              <h2>계획서 기준 3개 시나리오를 바로 재현할 수 있게 다듬었습니다</h2>
             </div>
-            <small>발표 흐름에 맞춰 프리셋 위치와 접근성 모드를 함께 전환합니다.</small>
+            <small>{selectedSummaryText}</small>
           </div>
           <div className="scenario-grid">
-            {DEMO_SCENARIOS.map((scenario) => (
+            {DEMO_SCENARIOS.map((scenario, index) => (
               <article className="scenario-card" key={scenario.id}>
+                <div className="scenario-step">Scenario {index + 1}</div>
                 <strong>{scenario.title}</strong>
                 <p>{scenario.description}</p>
+                <div className="scenario-meta">
+                  <span>{scenario.presetId === 'ulsan-live' ? '울산 실데이터' : '서울 이동지원'}</span>
+                  <span>{scenario.largeText ? '큰 글씨' : '표준 화면'}</span>
+                  <span>{scenario.simpleMode ? '단순 화면' : '상세 화면'}</span>
+                </div>
                 <button className="primary-button" onClick={() => activateScenario(scenario)} type="button">
                   {scenario.actionLabel}
                 </button>
@@ -316,11 +469,64 @@ export function HomePage() {
                     <span>버스 {getSourceLabel(summary.dataContext.serviceSources.buses)}</span>
                     <span>이동지원 {getSourceLabel(summary.dataContext.serviceSources.mobility)}</span>
                   </div>
+                  <div className="context-summary-grid">
+                    <article>
+                      <strong>부담도 신뢰도</strong>
+                      <p>{summary.movementBurden.confidenceLabel}</p>
+                    </article>
+                    <article>
+                      <strong>데이터 신선도</strong>
+                      <p>
+                        {summary.movementBurden.freshnessMinutes == null
+                          ? '확인 어려움'
+                          : `${summary.movementBurden.freshnessMinutes}분 전 기준`}
+                      </p>
+                    </article>
+                    <article>
+                      <strong>핵심 카드 수</strong>
+                      <p>{visibleCards.length}개</p>
+                    </article>
+                  </div>
                   <p>
                     {selectedPreset
                       ? `${selectedPreset.label}에서는 ${summary.dataContext.enabledServices.join(', ')} 데이터만 점수와 카드에 반영합니다.`
                       : '울산 3100000000은 신호등·버스 live, 서울 1100000000은 이동지원 live가 확인됐습니다.'}
                   </p>
+                </section>
+
+                <section className="route-compare-section">
+                  <div className="route-compare-controls">
+                    <div>
+                      <p className="eyebrow">발표용 의사결정 비교</p>
+                      <h2>같은 목적지에서 어떤 선택이 덜 부담스러운지 바로 설명할 수 있습니다</h2>
+                    </div>
+                    <div className="preset-strip">
+                      {COMPARE_TARGETS.map((target) => (
+                        <button
+                          key={target.id}
+                          className={`preset-button${selectedCompareTargetId === target.id ? ' active' : ''}`}
+                          onClick={() => setSelectedCompareTargetId(target.id)}
+                          type="button"
+                        >
+                          <span>{target.label}</span>
+                          <small>{target.description}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {isCompareLoading ? (
+                    <div className="inline-notice">경로 비교안을 계산하는 중입니다.</div>
+                  ) : null}
+                  {isCompareError ? (
+                    <div className="inline-notice">경로 비교안을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>
+                  ) : null}
+                  {compare ? (
+                    <RouteCompareCard
+                      compare={compare}
+                      targetDescription={selectedCompareTarget.description}
+                      targetLabel={selectedCompareTarget.label}
+                    />
+                  ) : null}
                 </section>
 
                 <section className="card-grid">
@@ -334,6 +540,7 @@ export function HomePage() {
                           : '잔여시간 정보 없음'
                       }
                       meta={summary.topSignal?.direction ?? '방향 정보 없음'}
+                      iconLabel="SIG"
                       sourceLabel={getSourceLabel(summary.dataContext.serviceSources.signals)}
                       title={summary.topSignal?.intersectionName ?? '주변 교차로 정보 없음'}
                       tone={summary.topSignal?.pedestrianSignalStatus === 'GREEN' ? 'safe' : 'warn'}
@@ -346,6 +553,7 @@ export function HomePage() {
                       eyebrow="버스 참고 정보"
                       highlight={summary.topBus?.etaCategory ?? '정보 부족'}
                       meta={summary.topBus ? `${summary.topBus.routeNo}번 · ${summary.topBus.nearStopName}` : '버스 정보 없음'}
+                      iconLabel="BUS"
                       sourceLabel={getSourceLabel(summary.dataContext.serviceSources.buses)}
                       title={summary.topBus ? `${summary.topBus.routeType} ${summary.topBus.routeNo}번` : '주변 버스 정보 없음'}
                       updatedAt={summary.topBus?.lastUpdatedAt ?? summary.lastUpdatedAt}
@@ -361,6 +569,7 @@ export function HomePage() {
                           ? `가용 차량 ${summary.topMobility.availableVehicleCount ?? 0}대`
                           : '조회 가능한 이동지원 센터 없음'
                       }
+                      iconLabel="AID"
                       sourceLabel={getSourceLabel(summary.dataContext.serviceSources.mobility)}
                       title={summary.topMobility?.centerName ?? '주변 이동지원 센터 정보 없음'}
                       updatedAt={summary.topMobility?.lastUpdatedAt ?? summary.lastUpdatedAt}
