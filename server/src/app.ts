@@ -23,19 +23,25 @@ const clientOrigins = env.clientOrigin
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || clientOrigins.length === 0 || clientOrigins.includes('*') || clientOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
+const apiCors = cors({
+  origin(origin, callback) {
+    if (!origin || clientOrigins.length === 0 || clientOrigins.includes('*') || clientOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
 
-      callback(new HttpError(403, '허용되지 않은 출처입니다.'));
-    },
-  }),
+    callback(new HttpError(403, '허용되지 않은 출처입니다.'));
+  },
+});
+
+app.use(
+  '/api',
+  apiCors,
 );
-app.use(express.json());
+app.use(
+  '/api',
+  express.json(),
+);
 
 app.use('/api/health', healthRouter);
 app.use('/api/location', summaryRouter);

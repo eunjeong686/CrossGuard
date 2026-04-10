@@ -46,18 +46,6 @@ export function SummaryMap({
   const selectionModeRef = useRef(selectionMode);
   const onManualSelectRef = useRef(onManualSelect);
 
-  const mapInsights = [
-    summary.topSignal
-      ? `가장 먼저 볼 신호: ${summary.topSignal.intersectionName}`
-      : '현재 주변 신호 후보를 찾지 못했습니다.',
-    summary.topBus
-      ? `가장 가까운 버스 기준 거리: 약 ${Math.round(summary.topBus.stopDistanceMeters)}m`
-      : '버스 거리 정보가 부족합니다.',
-    summary.topMobility
-      ? `이동지원 우선 확인 센터: ${summary.topMobility.centerName}`
-      : '주변 이동지원 센터 후보를 찾지 못했습니다.',
-  ];
-
   const markers = useMemo<MarkerDescriptor[]>(
     () => [
       ...summary.signals.map((signal) => ({
@@ -174,7 +162,7 @@ export function SummaryMap({
         weight: 3,
         fillColor: getMarkerColor(marker.tone),
         fillOpacity: marker.source === 'live' ? 0.95 : 0.72,
-      }).bindTooltip(`${marker.label} · ${marker.source.toUpperCase()}`, {
+      }).bindTooltip(marker.label, {
         direction: 'top',
         offset: [0, -8],
       });
@@ -192,41 +180,24 @@ export function SummaryMap({
   }, [selectionMode]);
 
   return (
-    <div className="map-card">
-      <div className="map-header">
-        <div>
-          <p className="eyebrow">지도</p>
-          <h2>{selectionMode ? '지도를 눌러 위치를 선택하세요' : '주변 교차로와 이동수단 후보'}</h2>
-        </div>
-        <div className="map-header-side">
-          <span>{selectionMode ? '위치 고르는 중' : '주변 보기'}</span>
-          <div className="map-source-legend">
-            <small><i className="live" />바로 확인</small>
-            <small><i className="mock" />참고</small>
-          </div>
-        </div>
-      </div>
+    <div className="map-card app-map-card">
       <div aria-label={selectionMode ? '위치 선택 지도' : '주변 정보 지도'} className={`map-board${selectionMode ? ' selecting' : ''}`}>
         <div className="map-overlay-panel">
           <div className="map-stat-pill">
             <strong>{summary.signals.length}</strong>
-            <span>신호 후보</span>
+            <span>신호</span>
           </div>
           <div className="map-stat-pill">
             <strong>{summary.buses.length}</strong>
-            <span>버스 후보</span>
+            <span>버스</span>
           </div>
           <div className="map-stat-pill">
             <strong>{summary.mobilityCenters.length}</strong>
-            <span>이동지원 후보</span>
+            <span>이동지원</span>
           </div>
         </div>
         <div className="leaflet-map" ref={mapElementRef} />
-        <div className="map-insight-panel">
-          {mapInsights.map((insight) => (
-            <p key={insight}>{insight}</p>
-          ))}
-        </div>
+        {selectionMode ? <div className="map-select-hint">지도를 눌러 위치를 고르세요</div> : null}
       </div>
     </div>
   );

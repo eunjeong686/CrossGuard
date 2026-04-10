@@ -1,59 +1,22 @@
 import { useState } from 'react';
-import { InfoCard } from '../components/cards/InfoCard';
 import { RouteCompareCard } from '../components/cards/RouteCompareCard';
-import { SimpleModeCard } from '../components/cards/SimpleModeCard';
-import { SummaryHeroCard } from '../components/cards/SummaryHeroCard';
-import { ModeToggle } from '../components/common/ModeToggle';
 import { AppShell } from '../components/layout/AppShell';
 import { SummaryMap } from '../components/map/SummaryMap';
 import { useLocation } from '../hooks/useLocation';
 import { useRouteCompare } from '../hooks/useRouteCompare';
 import { useSummary } from '../hooks/useSummary';
 import { useUiStore } from '../stores/uiStore';
-import { formatCoordinates, formatRelativeTime } from '../utils/format';
-import type { DataOrigin } from '../types/api';
+import { formatRelativeTime } from '../utils/format';
 
-type DemoPreset = {
+type RecommendedPlace = {
   id: 'ulsan-live' | 'seoul-mobility';
   label: string;
   description: string;
-  coordinates?: { lat: number; lng: number };
+  coordinates: { lat: number; lng: number };
   signalStdgCd?: string;
   busStdgCd?: string;
   mobilityStdgCd?: string;
   supportedCards: Array<'signals' | 'buses' | 'mobility'>;
-};
-
-const DEMO_PRESETS: DemoPreset[] = [
-  {
-    id: 'ulsan-live',
-    label: '버스 보기',
-    description: '횡단보도와 버스 정보를 함께 보여줘요',
-    coordinates: { lat: 35.5384, lng: 129.3114 },
-    signalStdgCd: '3100000000',
-    busStdgCd: '3100000000',
-    mobilityStdgCd: '3100000000',
-    supportedCards: ['signals', 'buses'],
-  },
-  {
-    id: 'seoul-mobility',
-    label: '이동지원 보기',
-    description: '이동지원 정보를 먼저 보여줘요',
-    coordinates: { lat: 37.5665, lng: 126.978 },
-    signalStdgCd: '1100000000',
-    busStdgCd: '1100000000',
-    mobilityStdgCd: '1100000000',
-    supportedCards: ['mobility'],
-  },
-];
-
-type QuickView = {
-  id: 'senior-bus' | 'guardian-mode' | 'signal-safety';
-  title: string;
-  caption: string;
-  presetId: DemoPreset['id'];
-  largeText: boolean;
-  simpleMode: boolean;
 };
 
 type CompareTarget = {
@@ -63,30 +26,26 @@ type CompareTarget = {
   offset: { lat: number; lng: number };
 };
 
-const QUICK_VIEWS: QuickView[] = [
+const RECOMMENDED_PLACES: RecommendedPlace[] = [
   {
-    id: 'senior-bus',
-    title: '버스 먼저',
-    caption: '신호와 버스를 함께 봐요',
-    presetId: 'ulsan-live',
-    largeText: false,
-    simpleMode: false,
+    id: 'ulsan-live',
+    label: '버스와 신호를 함께 보기',
+    description: '걷기 전 신호와 버스 정보를 먼저 살펴봅니다.',
+    coordinates: { lat: 35.5384, lng: 129.3114 },
+    signalStdgCd: '3100000000',
+    busStdgCd: '3100000000',
+    mobilityStdgCd: '3100000000',
+    supportedCards: ['signals', 'buses'],
   },
   {
-    id: 'guardian-mode',
-    title: '크고 간단하게',
-    caption: '글자를 키우고 덜 복잡하게',
-    presetId: 'seoul-mobility',
-    largeText: true,
-    simpleMode: true,
-  },
-  {
-    id: 'signal-safety',
-    title: '횡단 전에',
-    caption: '꼭 확인할 점부터 볼게요',
-    presetId: 'ulsan-live',
-    largeText: false,
-    simpleMode: false,
+    id: 'seoul-mobility',
+    label: '이동지원 먼저 보기',
+    description: '이동지원 정보를 먼저 확인합니다.',
+    coordinates: { lat: 37.5665, lng: 126.978 },
+    signalStdgCd: '1100000000',
+    busStdgCd: '1100000000',
+    mobilityStdgCd: '1100000000',
+    supportedCards: ['mobility'],
   },
 ];
 
@@ -106,33 +65,21 @@ const COMPARE_TARGETS: CompareTarget[] = [
   {
     id: 'safe-crossing',
     label: '조금 더 편한 길 보기',
-    description: '걷는 거리와 신호를 함께 보고 보수적으로 비교합니다.',
+    description: '걷는 거리와 신호를 함께 보고 비교합니다.',
     offset: { lat: 0.0006, lng: 0.0012 },
   },
 ];
 
-function getSourceLabel(source: DataOrigin) {
-  if (source === 'live') {
-    return '바로 확인';
+function getMoveSuggestion(label?: string) {
+  if (label === '높음') {
+    return '이동지원이나 다른 이동 방법을 먼저 살펴보세요.';
   }
 
-  if (source === 'mock') {
-    return '참고';
+  if (label === '낮음') {
+    return '현재 정보로는 비교적 여유가 있어요.';
   }
 
-  return '꺼짐';
-}
-
-function getSourceTone(source: DataOrigin): 'live' | 'mock' | 'off' {
-  if (source === 'live') {
-    return 'live';
-  }
-
-  if (source === 'mock') {
-    return 'mock';
-  }
-
-  return 'off';
+  return '신호와 버스를 같이 확인하고 움직이세요.';
 }
 
 export function HomePage() {
@@ -144,33 +91,27 @@ export function HomePage() {
     setManualLocation,
     setSelectionMode,
     requestCurrentLocation,
-    status,
   } = useLocation();
-  const [selectedPresetId, setSelectedPresetId] = useState<DemoPreset['id'] | null>(null);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<RecommendedPlace['id'] | null>(null);
   const [selectedCompareTargetId, setSelectedCompareTargetId] =
     useState<CompareTarget['id']>('bus-stop');
-  const {
-    largeText,
-    simpleMode,
-    setLargeText,
-    setSimpleMode,
-    toggleLargeText,
-    toggleSimpleMode,
-  } = useUiStore();
-  const selectedPreset = DEMO_PRESETS.find((preset) => preset.id === selectedPresetId) ?? null;
-  const activeCoordinates = selectedPreset?.coordinates ?? coordinates;
+  const [compareOpen, setCompareOpen] = useState(false);
+  const { largeText, simpleMode, toggleLargeText, toggleSimpleMode } = useUiStore();
+  const selectedPlace =
+    RECOMMENDED_PLACES.find((place) => place.id === selectedPlaceId) ?? null;
+  const activeCoordinates = selectedPlace?.coordinates ?? coordinates;
+  const visibleCards = selectedPlace?.supportedCards ?? ['signals', 'buses', 'mobility'];
   const summaryOptions =
-    !selectedPreset
+    !selectedPlace
       ? undefined
       : {
-          signalStdgCd: selectedPreset.signalStdgCd,
-          busStdgCd: selectedPreset.busStdgCd,
-          mobilityStdgCd: selectedPreset.mobilityStdgCd,
-          includeSignals: selectedPreset.supportedCards.includes('signals'),
-          includeBuses: selectedPreset.supportedCards.includes('buses'),
-          includeMobility: selectedPreset.supportedCards.includes('mobility'),
+          signalStdgCd: selectedPlace.signalStdgCd,
+          busStdgCd: selectedPlace.busStdgCd,
+          mobilityStdgCd: selectedPlace.mobilityStdgCd,
+          includeSignals: selectedPlace.supportedCards.includes('signals'),
+          includeBuses: selectedPlace.supportedCards.includes('buses'),
+          includeMobility: selectedPlace.supportedCards.includes('mobility'),
         };
-  const visibleCards = selectedPreset?.supportedCards ?? ['signals', 'buses', 'mobility'];
   const { data, isLoading, isError, refetch, isFetching } = useSummary(
     activeCoordinates.lat,
     activeCoordinates.lng,
@@ -183,11 +124,11 @@ export function HomePage() {
     lat: activeCoordinates.lat + selectedCompareTarget.offset.lat,
     lng: activeCoordinates.lng + selectedCompareTarget.offset.lng,
   };
-  const compareOptions = selectedPreset
+  const compareOptions = selectedPlace
     ? {
-        signalStdgCd: selectedPreset.signalStdgCd,
-        busStdgCd: selectedPreset.busStdgCd,
-        mobilityStdgCd: selectedPreset.mobilityStdgCd,
+        signalStdgCd: selectedPlace.signalStdgCd,
+        busStdgCd: selectedPlace.busStdgCd,
+        mobilityStdgCd: selectedPlace.mobilityStdgCd,
       }
     : undefined;
   const {
@@ -202,278 +143,243 @@ export function HomePage() {
     compareOptions,
   );
   const compare = compareData?.data;
-  const primaryQuickView = QUICK_VIEWS[0];
-  function activateQuickView(quickView: QuickView) {
-    setSelectedPresetId(quickView.presetId);
-    setLargeText(quickView.largeText);
-    setSimpleMode(quickView.simpleMode);
+  const placeLabel = selectedPlace?.label ?? locationLabel;
+  const nearbyRows = summary
+    ? [
+        visibleCards.includes('signals')
+          ? {
+              id: 'signals',
+              label: '횡단보도',
+              title: summary.topSignal?.intersectionName ?? '가까운 신호 정보 없음',
+              value:
+                summary.topSignal?.remainingSeconds != null
+                  ? `${summary.topSignal.remainingSeconds}초 남음`
+                  : (summary.topSignal?.pedestrianSignalStatusLabel ?? '확인 필요'),
+            }
+          : null,
+        visibleCards.includes('buses')
+          ? {
+              id: 'buses',
+              label: '버스',
+              title: summary.topBus
+                ? `${summary.topBus.routeType} ${summary.topBus.routeNo}번`
+                : '가까운 버스 정보 없음',
+              value: summary.topBus?.etaCategory ?? '확인 필요',
+            }
+          : null,
+        visibleCards.includes('mobility')
+          ? {
+              id: 'mobility',
+              label: '이동지원',
+              title: summary.topMobility?.centerName ?? '가까운 이동지원 정보 없음',
+              value: summary.topMobility?.serviceStatus ?? '확인 필요',
+            }
+          : null,
+      ].filter((row) => row != null)
+    : [];
 
-    const preset = DEMO_PRESETS.find((item) => item.id === quickView.presetId);
-    if (preset?.coordinates) {
-      setManualLocation(preset.coordinates);
-    }
+  function chooseRecommendedPlace(place: RecommendedPlace) {
+    setSelectedPlaceId(place.id);
+    setManualLocation(place.coordinates);
+    setCompareOpen(false);
   }
 
   return (
     <AppShell largeText={largeText}>
-      <main className="page">
-        <section className="masthead hero-stage">
-          <div className="hero-copy-panel">
-            <div className="badge-row">
-              <span className="service-badge">걷기 전 확인 도우미</span>
-              <span className="status-chip">{isFetching ? '지금 정보 확인 중' : '바로 확인 가능'}</span>
-            </div>
-            <div className="masthead-copy">
+      <main className="map-app-page">
+        <section className="map-app-shell" aria-label="주변 이동 정보">
+          <div className="map-surface">
+            <div className="top-location-bar">
               <div>
-                <p className="eyebrow">걷기 전에 먼저 보기</p>
-                <h1>신호, 버스, 이동지원 정보를 한 번에 살펴보세요</h1>
-                <p className="hero-lead">
-                  멀리 걷기 전에 필요한 정보만 먼저 보여줘서, 지금 조금 더 편한 선택을 고를 수 있게
-                  돕습니다.
-                </p>
+                <span>{isFetching ? '정보 확인 중' : '걷기 전 확인'}</span>
+                <strong>{placeLabel}</strong>
               </div>
-            </div>
-            <div className="hero-action-row">
-              <button className="primary-button hero-button" onClick={() => activateQuickView(primaryQuickView)} type="button">
-                지금 보기
-              </button>
               <button
-                className="secondary-button hero-button"
+                className="mini-map-button"
                 onClick={() => {
-                  setSelectedPresetId(null);
+                  setSelectedPlaceId(null);
                   requestCurrentLocation();
                 }}
                 type="button"
               >
-                현재 위치 보기
+                내 위치
               </button>
             </div>
-            <div className="quick-view-row">
-              {QUICK_VIEWS.map((quickView) => (
-                <button
-                  key={quickView.id}
-                  className="quick-view-chip"
-                  onClick={() => activateQuickView(quickView)}
-                  type="button"
-                >
-                  <strong>{quickView.title}</strong>
-                  <small>{quickView.caption}</small>
-                </button>
-              ))}
-            </div>
-          </div>
 
-          <div className="hero-side-panel">
-            <div className="safety-panel">
-              <strong>앱보다 현장 신호를 먼저 확인해 주세요.</strong>
-              <p>이 화면은 참고용이고, 실제 신호와 주변 상황이 가장 중요합니다.</p>
-            </div>
-            <div className="hero-side-note">
-              <span>지금 할 수 있는 일</span>
-              <strong>위치를 고르고, 글자를 키우고, 덜 힘든 쪽을 비교할 수 있어요.</strong>
-            </div>
-          </div>
-        </section>
-
-        <section className="control-strip">
-          <div className="location-card">
-            <div>
-              <p className="eyebrow">현재 위치</p>
-              <h2>{selectedPreset ? selectedPreset.label : locationLabel}</h2>
-              <p>{formatCoordinates(activeCoordinates.lat, activeCoordinates.lng)}</p>
-              <small>
-                {!selectedPreset
-                  ? status === 'loading'
-                    ? '위치를 확인하고 있어요.'
-                    : '위치를 허용하지 않아도 지도에서 직접 고를 수 있어요.'
-                  : selectedPreset.description}
-              </small>
-            </div>
-            <div className="button-row">
-              <button
-                className="primary-button"
-                onClick={() => {
-                  setSelectedPresetId(null);
-                  requestCurrentLocation();
+            {summary ? (
+              <SummaryMap
+                coordinates={activeCoordinates}
+                onManualSelect={(next) => {
+                  setSelectedPlaceId(null);
+                  setManualLocation(next);
+                  setCompareOpen(false);
                 }}
-                type="button"
-              >
-                현재 위치 사용
-              </button>
-              <button className="secondary-button" onClick={() => setSelectionMode(!selectionMode)} type="button">
-                {selectionMode ? '선택 마치기' : '지도에서 고르기'}
-              </button>
-            </div>
-            {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
-            <div className="preset-strip">
-              {DEMO_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  className={`preset-button${selectedPresetId === preset.id ? ' active' : ''}`}
-                  onClick={() => {
-                    setSelectedPresetId(preset.id);
-                    if (preset.coordinates) {
-                      setManualLocation(preset.coordinates);
-                    }
-                  }}
-                  type="button"
-                >
-                  <span>{preset.label}</span>
-                  <small>{preset.description}</small>
-                </button>
-              ))}
-            </div>
+                selectionMode={selectionMode}
+                summary={summary}
+              />
+            ) : (
+              <div className="empty-map-panel">
+                <strong>{isLoading ? '주변 정보를 불러오고 있어요' : '지도를 준비하고 있어요'}</strong>
+                <p>위치를 기준으로 신호, 버스, 이동지원 정보를 정리합니다.</p>
+              </div>
+            )}
           </div>
 
-          <div className="mode-strip">
-            <ModeToggle
-              active={largeText}
-              description="글자를 더 크게 보여줘요."
-              iconLabel="글씨"
-              label="글자 크게 보기"
-              onClick={toggleLargeText}
-            />
-            <ModeToggle
-              active={simpleMode}
-              description="꼭 필요한 정보만 남겨요."
-              iconLabel="간단"
-              label="간단히 보기"
-              onClick={toggleSimpleMode}
-            />
-          </div>
-        </section>
+          <aside className="bottom-summary-sheet" aria-label="이동 정보 요약">
+            <div className="sheet-handle" aria-hidden="true" />
 
-        {isLoading ? (
-          <section className="loading-panel">
-            <h2>주변 정보를 불러오는 중입니다</h2>
-            <p>가장 가까운 교차로, 버스, 이동지원 수단을 정리하고 있습니다.</p>
-          </section>
-        ) : null}
-
-        {isError ? (
-          <section className="error-panel">
-            <h2>요약 정보를 가져오지 못했습니다</h2>
-            <p>일시적인 API 문제일 수 있습니다. 다시 시도해 주세요.</p>
-            <button className="primary-button" onClick={() => refetch()} type="button">
-              다시 불러오기
-            </button>
-          </section>
-        ) : null}
-
-        {summary ? (
-          <>
-            <SummaryHeroCard summary={summary} />
-            {simpleMode ? <SimpleModeCard summary={summary} visibleCards={visibleCards} /> : null}
-
-            {!simpleMode ? (
-              <>
-                <SummaryMap
-                  coordinates={activeCoordinates}
-                  onManualSelect={(next) => {
-                    setSelectedPresetId(null);
-                    setManualLocation(next);
-                  }}
-                  selectionMode={selectionMode}
-                  summary={summary}
-                />
-
-                <section className="route-compare-section">
-                  <div className="route-compare-controls">
-                    <div>
-                      <p className="eyebrow">비교 보기</p>
-                      <h2>어느 쪽이 조금 덜 힘든지 볼 수 있어요</h2>
-                    </div>
-                    <div className="preset-strip">
-                      {COMPARE_TARGETS.map((target) => (
-                        <button
-                          key={target.id}
-                          className={`preset-button${selectedCompareTargetId === target.id ? ' active' : ''}`}
-                          onClick={() => setSelectedCompareTargetId(target.id)}
-                          type="button"
-                        >
-                          <span>{target.label}</span>
-                          <small>{target.description}</small>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {isCompareLoading ? (
-                    <div className="inline-notice">비교 정보를 불러오는 중입니다.</div>
-                  ) : null}
-                  {isCompareError ? (
-                    <div className="inline-notice">비교 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>
-                  ) : null}
-                  {compare ? (
-                    <RouteCompareCard
-                      compare={compare}
-                      targetDescription={selectedCompareTarget.description}
-                      targetLabel={selectedCompareTarget.label}
-                    />
-                  ) : null}
-                </section>
-
-                <section className="card-grid">
-                  {visibleCards.includes('signals') ? (
-                    <InfoCard
-                      body="실제 신호를 꼭 다시 확인해 주세요."
-                      eyebrow="횡단보도 정보"
-                      highlight={
-                        summary.topSignal?.remainingSeconds != null
-                          ? `${summary.topSignal.remainingSeconds}초 남음`
-                          : '시간 정보 없음'
-                      }
-                      meta={summary.topSignal?.direction ?? '방향 정보 없음'}
-                      iconLabel="신호"
-                      sourceText={getSourceLabel(summary.dataContext.serviceSources.signals)}
-                      sourceTone={getSourceTone(summary.dataContext.serviceSources.signals)}
-                      title={summary.topSignal?.intersectionName ?? '주변 횡단보도 정보 없음'}
-                      tone={summary.topSignal?.pedestrianSignalStatus === 'GREEN' ? 'safe' : 'warn'}
-                      updatedAt={summary.topSignal?.collectedAt ?? summary.lastUpdatedAt}
-                    />
-                  ) : null}
-                  {visibleCards.includes('buses') ? (
-                    <InfoCard
-                      body="금방 오는지, 조금 서둘러야 하는지 쉽게 보여줘요."
-                      eyebrow="버스 정보"
-                      highlight={summary.topBus?.etaCategory ?? '정보 없음'}
-                      meta={summary.topBus ? `${summary.topBus.routeNo}번 · ${summary.topBus.nearStopName}` : '버스 정보 없음'}
-                      iconLabel="버스"
-                      sourceText={getSourceLabel(summary.dataContext.serviceSources.buses)}
-                      sourceTone={getSourceTone(summary.dataContext.serviceSources.buses)}
-                      title={summary.topBus ? `${summary.topBus.routeType} ${summary.topBus.routeNo}번` : '주변 버스 정보 없음'}
-                      updatedAt={summary.topBus?.lastUpdatedAt ?? summary.lastUpdatedAt}
-                    />
-                  ) : null}
-                  {visibleCards.includes('mobility') ? (
-                    <InfoCard
-                      body="바로 이용할 수 있는지, 더 확인이 필요한지 보여줘요."
-                      eyebrow="이동지원 정보"
-                      highlight={summary.topMobility?.serviceStatus ?? '정보 없음'}
-                      meta={
-                        summary.topMobility
-                          ? `가용 차량 ${summary.topMobility.availableVehicleCount ?? 0}대`
-                          : '주변 이동지원 정보 없음'
-                      }
-                      iconLabel="지원"
-                      sourceText={getSourceLabel(summary.dataContext.serviceSources.mobility)}
-                      sourceTone={getSourceTone(summary.dataContext.serviceSources.mobility)}
-                      title={summary.topMobility?.centerName ?? '주변 이동지원 정보 없음'}
-                      updatedAt={summary.topMobility?.lastUpdatedAt ?? summary.lastUpdatedAt}
-                    />
-                  ) : null}
-                </section>
-              </>
+            {isLoading ? (
+              <div className="sheet-message">
+                <strong>주변 정보를 불러오고 있어요</strong>
+                <p>잠시만 기다려 주세요.</p>
+              </div>
             ) : null}
 
-            <section className="footer-note">
-              <div>
-                <p className="eyebrow">안전 안내</p>
-                <h2>{summary.disclaimer}</h2>
+            {isError ? (
+              <div className="sheet-message error">
+                <strong>정보를 가져오지 못했어요</strong>
+                <p>잠시 후 다시 시도해 주세요.</p>
+                <button className="primary-button" onClick={() => refetch()} type="button">
+                  다시 불러오기
+                </button>
               </div>
-              <small>마지막 갱신 {formatRelativeTime(summary.lastUpdatedAt)}</small>
-            </section>
-          </>
-        ) : null}
+            ) : null}
+
+            {summary ? (
+              <>
+                <div className="sheet-summary">
+                  <div>
+                    <span>지금은 {summary.movementBurden.label}</span>
+                    <h1>{getMoveSuggestion(summary.movementBurden.label)}</h1>
+                    <p>앱 안내보다 현장 신호와 주변 상황을 먼저 확인해 주세요.</p>
+                  </div>
+                  <div className="sheet-score-pill">
+                    <strong>{summary.movementBurden.score}</strong>
+                    <span>점</span>
+                  </div>
+                </div>
+
+                <div className="sheet-action-grid">
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      setSelectedPlaceId(null);
+                      requestCurrentLocation();
+                    }}
+                    type="button"
+                  >
+                    내 위치로 보기
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => setSelectionMode(!selectionMode)}
+                    type="button"
+                  >
+                    {selectionMode ? '선택 마치기' : '지도에서 고르기'}
+                  </button>
+                  <button
+                    className={`chip-button${largeText ? ' active' : ''}`}
+                    onClick={toggleLargeText}
+                    type="button"
+                  >
+                    글자 크게
+                  </button>
+                  <button
+                    className={`chip-button${simpleMode ? ' active' : ''}`}
+                    onClick={toggleSimpleMode}
+                    type="button"
+                  >
+                    간단히
+                  </button>
+                </div>
+
+                {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
+
+                <details className="recommended-places">
+                  <summary>추천 위치</summary>
+                  <div className="recommended-place-list">
+                    {RECOMMENDED_PLACES.map((place) => (
+                      <button
+                        className={selectedPlaceId === place.id ? 'active' : ''}
+                        key={place.id}
+                        onClick={() => chooseRecommendedPlace(place)}
+                        type="button"
+                      >
+                        <strong>{place.label}</strong>
+                        <span>{place.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </details>
+
+                <div className="nearby-list">
+                  {nearbyRows.map((row) => (
+                    <article className="nearby-row" key={row.id}>
+                      <span>{row.label}</span>
+                      <strong>{row.title}</strong>
+                      <em>{row.value}</em>
+                    </article>
+                  ))}
+                </div>
+
+                {simpleMode ? (
+                  <div className="simple-sheet-note">
+                    <strong>간단히 보는 중</strong>
+                    <p>꼭 필요한 정보만 먼저 보여드리고 있어요.</p>
+                  </div>
+                ) : null}
+
+                {!simpleMode ? (
+                  <div className="compare-drawer">
+                    <button
+                      className="compare-toggle"
+                      onClick={() => setCompareOpen((open) => !open)}
+                      type="button"
+                    >
+                      <span>다른 방법도 볼까요?</span>
+                      <strong>{compareOpen ? '닫기' : '보기'}</strong>
+                    </button>
+
+                    {compareOpen ? (
+                      <div className="compare-drawer-body">
+                        <div className="target-chip-row">
+                          {COMPARE_TARGETS.map((target) => (
+                            <button
+                              className={selectedCompareTargetId === target.id ? 'active' : ''}
+                              key={target.id}
+                              onClick={() => setSelectedCompareTargetId(target.id)}
+                              type="button"
+                            >
+                              {target.label}
+                            </button>
+                          ))}
+                        </div>
+                        {isCompareLoading ? (
+                          <div className="inline-notice">비교 정보를 불러오는 중입니다.</div>
+                        ) : null}
+                        {isCompareError ? (
+                          <div className="inline-notice">비교 정보를 불러오지 못했습니다.</div>
+                        ) : null}
+                        {compare ? (
+                          <RouteCompareCard
+                            compare={compare}
+                            targetDescription={selectedCompareTarget.description}
+                            targetLabel={selectedCompareTarget.label}
+                          />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="sheet-footnote">
+                  <span>마지막 확인 {formatRelativeTime(summary.lastUpdatedAt)}</span>
+                  <span>현장 상황을 우선해 주세요.</span>
+                </div>
+              </>
+            ) : null}
+          </aside>
+        </section>
       </main>
     </AppShell>
   );

@@ -61,11 +61,6 @@ export function RouteCompareCard({
                 </span>
               ))}
             </div>
-            <div className="route-tags subdued">
-              {option.sourceLabels.map((label) => (
-                <span key={label}>{label}</span>
-              ))}
-            </div>
           </article>
         ))}
       </div>
