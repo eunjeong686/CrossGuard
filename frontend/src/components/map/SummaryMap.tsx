@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import type { Coordinates, DataOrigin, SummaryPayload } from '../../types/api';
 
 type SummaryMapProps = {
   coordinates: Coordinates;
-  summary: SummaryPayload;
+  summary?: SummaryPayload;
   selectionMode: boolean;
   onManualSelect: (coordinates: Coordinates) => void;
 };
@@ -45,40 +45,6 @@ export function SummaryMap({
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const selectionModeRef = useRef(selectionMode);
   const onManualSelectRef = useRef(onManualSelect);
-
-  const markers = useMemo<MarkerDescriptor[]>(
-    () => [
-      ...summary.signals.map((signal) => ({
-        id: signal.intersectionId,
-        label: signal.intersectionName,
-        tone: 'signal' as const,
-        source: resolveMarkerSource(summary.dataContext.serviceSources.signals),
-        position: { lat: signal.lat, lng: signal.lng },
-      })),
-      ...summary.mobilityCenters.map((center) => ({
-        id: center.centerId,
-        label: center.centerName,
-        tone: 'mobility' as const,
-        source: resolveMarkerSource(summary.dataContext.serviceSources.mobility),
-        position: { lat: center.lat, lng: center.lng },
-      })),
-      ...summary.buses.map((bus) => ({
-        id: bus.routeId,
-        label: `${bus.routeNo}번 ${bus.nearStopName}`,
-        tone: 'bus' as const,
-        source: resolveMarkerSource(summary.dataContext.serviceSources.buses),
-        position: { lat: bus.lat, lng: bus.lng },
-      })),
-    ],
-    [
-      summary.buses,
-      summary.dataContext.serviceSources.buses,
-      summary.dataContext.serviceSources.mobility,
-      summary.dataContext.serviceSources.signals,
-      summary.mobilityCenters,
-      summary.signals,
-    ],
-  );
 
   useEffect(() => {
     selectionModeRef.current = selectionMode;
@@ -153,6 +119,30 @@ export function SummaryMap({
       return;
     }
 
+    const markers: MarkerDescriptor[] = [
+      ...(summary?.signals ?? []).map((signal) => ({
+        id: signal.intersectionId,
+        label: signal.intersectionName,
+        tone: 'signal' as const,
+        source: resolveMarkerSource(summary?.dataContext.serviceSources.signals ?? 'disabled'),
+        position: { lat: signal.lat, lng: signal.lng },
+      })),
+      ...(summary?.mobilityCenters ?? []).map((center) => ({
+        id: center.centerId,
+        label: center.centerName,
+        tone: 'mobility' as const,
+        source: resolveMarkerSource(summary?.dataContext.serviceSources.mobility ?? 'disabled'),
+        position: { lat: center.lat, lng: center.lng },
+      })),
+      ...(summary?.buses ?? []).map((bus) => ({
+        id: bus.routeId,
+        label: `${bus.routeNo}번 ${bus.nearStopName}`,
+        tone: 'bus' as const,
+        source: resolveMarkerSource(summary?.dataContext.serviceSources.buses ?? 'disabled'),
+        position: { lat: bus.lat, lng: bus.lng },
+      })),
+    ];
+
     markerLayerRef.current.clearLayers();
 
     markers.forEach((marker) => {
@@ -169,7 +159,7 @@ export function SummaryMap({
 
       markerLayerRef.current?.addLayer(circle);
     });
-  }, [markers]);
+  }, [summary]);
 
   useEffect(() => {
     if (!mapElementRef.current) {
@@ -184,15 +174,15 @@ export function SummaryMap({
       <div aria-label={selectionMode ? '위치 선택 지도' : '주변 정보 지도'} className={`map-board${selectionMode ? ' selecting' : ''}`}>
         <div className="map-overlay-panel">
           <div className="map-stat-pill">
-            <strong>{summary.signals.length}</strong>
+            <strong>{summary?.signals.length ?? 0}</strong>
             <span>신호</span>
           </div>
           <div className="map-stat-pill">
-            <strong>{summary.buses.length}</strong>
+            <strong>{summary?.buses.length ?? 0}</strong>
             <span>버스</span>
           </div>
           <div className="map-stat-pill">
-            <strong>{summary.mobilityCenters.length}</strong>
+            <strong>{summary?.mobilityCenters.length ?? 0}</strong>
             <span>이동지원</span>
           </div>
         </div>

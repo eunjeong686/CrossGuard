@@ -352,6 +352,7 @@ a {
 .sheet-summary p,
 .sheet-message p,
 .simple-sheet-note p,
+.support-area-card p,
 .sheet-footnote,
 .recommended-place-list span,
 .route-compare-card p {
@@ -377,6 +378,14 @@ a {
   display: block;
   color: var(--amber);
   font-size: 0.82rem;
+}
+
+.assistive-reason {
+  display: block;
+  margin-top: 10px;
+  color: #5f6f7a;
+  font-style: normal;
+  line-height: 1.6;
 }
 
 .sheet-action-grid {
@@ -441,6 +450,40 @@ a {
 .sheet-message.error {
   background: #fff5f2;
   color: var(--danger);
+}
+
+.support-area-card {
+  padding: 12px 4px 4px;
+  display: grid;
+  gap: 14px;
+}
+
+.support-area-card span {
+  width: fit-content;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #edf8f2;
+  color: var(--green-deep);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.support-area-card h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+}
+
+.verified-place-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.verified-place-grid .secondary-button {
+  grid-column: 1 / -1;
 }
 
 .recommended-places {
@@ -829,6 +872,10 @@ a {
 
   .sheet-action-grid {
     gap: 8px;
+  }
+
+  .verified-place-grid {
+    grid-template-columns: 1fr;
   }
 
   .primary-button,

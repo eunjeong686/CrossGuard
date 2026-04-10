@@ -5,6 +5,7 @@ type RouteCompareOptions = {
   signalStdgCd?: string;
   busStdgCd?: string;
   mobilityStdgCd?: string;
+  enabled?: boolean;
 };
 
 export function fetchRouteCompare(

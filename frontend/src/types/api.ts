@@ -71,6 +71,12 @@ export type SummaryPayload = {
     confidenceLabel: BurdenLabel;
     freshnessMinutes: number | null;
     factors: string[];
+    assistiveInsight: {
+      message: string;
+      reason: string;
+      safetyReminder: string;
+      engine: 'local-rules';
+    };
   };
   topSignal: SignalCard | null;
   topBus: BusCard | null;

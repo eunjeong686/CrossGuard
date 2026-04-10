@@ -8,6 +8,7 @@ type SummaryOptions = {
   includeSignals?: boolean;
   includeBuses?: boolean;
   includeMobility?: boolean;
+  enabled?: boolean;
 };
 
 export function useSummary(lat: number, lng: number, options?: SummaryOptions) {
@@ -24,7 +25,8 @@ export function useSummary(lat: number, lng: number, options?: SummaryOptions) {
       options?.includeMobility,
     ],
     queryFn: () => fetchSummary(lat, lng, options),
+    enabled: options?.enabled ?? true,
     staleTime: 15_000,
-    refetchInterval: 20_000,
+    refetchInterval: options?.enabled === false ? false : 20_000,
   });
 }

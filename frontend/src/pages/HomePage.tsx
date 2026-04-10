@@ -12,11 +12,23 @@ type RecommendedPlace = {
   id: 'ulsan-live' | 'seoul-mobility';
   label: string;
   description: string;
+  currentLabel: string;
+  unsupportedLabel: string;
   coordinates: { lat: number; lng: number };
   signalStdgCd?: string;
   busStdgCd?: string;
   mobilityStdgCd?: string;
   supportedCards: Array<'signals' | 'buses' | 'mobility'>;
+};
+
+type SupportedArea = {
+  id: RecommendedPlace['id'];
+  bounds: {
+    minLat: number;
+    maxLat: number;
+    minLng: number;
+    maxLng: number;
+  };
 };
 
 type CompareTarget = {
@@ -29,7 +41,9 @@ type CompareTarget = {
 const RECOMMENDED_PLACES: RecommendedPlace[] = [
   {
     id: 'ulsan-live',
-    label: '버스와 신호를 함께 보기',
+    label: '울산 신호·버스 보기',
+    currentLabel: '울산 주변',
+    unsupportedLabel: '울산에서 신호와 버스를 확인해요',
     description: '걷기 전 신호와 버스 정보를 먼저 살펴봅니다.',
     coordinates: { lat: 35.5384, lng: 129.3114 },
     signalStdgCd: '3100000000',
@@ -39,13 +53,26 @@ const RECOMMENDED_PLACES: RecommendedPlace[] = [
   },
   {
     id: 'seoul-mobility',
-    label: '이동지원 먼저 보기',
+    label: '서울 이동지원 보기',
+    currentLabel: '서울 주변',
+    unsupportedLabel: '서울에서 이동지원을 확인해요',
     description: '이동지원 정보를 먼저 확인합니다.',
     coordinates: { lat: 37.5665, lng: 126.978 },
     signalStdgCd: '1100000000',
     busStdgCd: '1100000000',
     mobilityStdgCd: '1100000000',
     supportedCards: ['mobility'],
+  },
+];
+
+const SUPPORTED_AREAS: SupportedArea[] = [
+  {
+    id: 'seoul-mobility',
+    bounds: { minLat: 37.42, maxLat: 37.7, minLng: 126.76, maxLng: 127.2 },
+  },
+  {
+    id: 'ulsan-live',
+    bounds: { minLat: 35.3, maxLat: 35.75, minLng: 129, maxLng: 129.47 },
   },
 ];
 
@@ -70,16 +97,20 @@ const COMPARE_TARGETS: CompareTarget[] = [
   },
 ];
 
-function getMoveSuggestion(label?: string) {
-  if (label === '높음') {
-    return '이동지원이나 다른 이동 방법을 먼저 살펴보세요.';
-  }
+function getSupportedArea(coordinates: { lat: number; lng: number }) {
+  return (
+    SUPPORTED_AREAS.find(
+      (area) =>
+        coordinates.lat >= area.bounds.minLat &&
+        coordinates.lat <= area.bounds.maxLat &&
+        coordinates.lng >= area.bounds.minLng &&
+        coordinates.lng <= area.bounds.maxLng,
+    ) ?? null
+  );
+}
 
-  if (label === '낮음') {
-    return '현재 정보로는 비교적 여유가 있어요.';
-  }
-
-  return '신호와 버스를 같이 확인하고 움직이세요.';
+function getPlaceProfileById(id: RecommendedPlace['id']) {
+  return RECOMMENDED_PLACES.find((place) => place.id === id) ?? RECOMMENDED_PLACES[0];
 }
 
 export function HomePage() {
@@ -100,18 +131,19 @@ export function HomePage() {
   const selectedPlace =
     RECOMMENDED_PLACES.find((place) => place.id === selectedPlaceId) ?? null;
   const activeCoordinates = selectedPlace?.coordinates ?? coordinates;
-  const visibleCards = selectedPlace?.supportedCards ?? ['signals', 'buses', 'mobility'];
-  const summaryOptions =
-    !selectedPlace
-      ? undefined
-      : {
-          signalStdgCd: selectedPlace.signalStdgCd,
-          busStdgCd: selectedPlace.busStdgCd,
-          mobilityStdgCd: selectedPlace.mobilityStdgCd,
-          includeSignals: selectedPlace.supportedCards.includes('signals'),
-          includeBuses: selectedPlace.supportedCards.includes('buses'),
-          includeMobility: selectedPlace.supportedCards.includes('mobility'),
-        };
+  const supportedArea = getSupportedArea(activeCoordinates);
+  const activePlaceProfile = selectedPlace ?? (supportedArea ? getPlaceProfileById(supportedArea.id) : null);
+  const isSupportedArea = Boolean(activePlaceProfile);
+  const visibleCards = activePlaceProfile?.supportedCards ?? [];
+  const summaryOptions = {
+    signalStdgCd: activePlaceProfile?.signalStdgCd,
+    busStdgCd: activePlaceProfile?.busStdgCd,
+    mobilityStdgCd: activePlaceProfile?.mobilityStdgCd,
+    includeSignals: visibleCards.includes('signals'),
+    includeBuses: visibleCards.includes('buses'),
+    includeMobility: visibleCards.includes('mobility'),
+    enabled: isSupportedArea,
+  };
   const { data, isLoading, isError, refetch, isFetching } = useSummary(
     activeCoordinates.lat,
     activeCoordinates.lng,
@@ -124,13 +156,12 @@ export function HomePage() {
     lat: activeCoordinates.lat + selectedCompareTarget.offset.lat,
     lng: activeCoordinates.lng + selectedCompareTarget.offset.lng,
   };
-  const compareOptions = selectedPlace
-    ? {
-        signalStdgCd: selectedPlace.signalStdgCd,
-        busStdgCd: selectedPlace.busStdgCd,
-        mobilityStdgCd: selectedPlace.mobilityStdgCd,
-      }
-    : undefined;
+  const compareOptions = {
+    signalStdgCd: activePlaceProfile?.signalStdgCd,
+    busStdgCd: activePlaceProfile?.busStdgCd,
+    mobilityStdgCd: activePlaceProfile?.mobilityStdgCd,
+    enabled: isSupportedArea,
+  };
   const {
     data: compareData,
     isLoading: isCompareLoading,
@@ -143,7 +174,13 @@ export function HomePage() {
     compareOptions,
   );
   const compare = compareData?.data;
-  const placeLabel = selectedPlace?.label ?? locationLabel;
+  const placeLabel = selectedPlace?.label ?? activePlaceProfile?.currentLabel ?? locationLabel;
+  const summaryMessage =
+    summary?.movementBurden.assistiveInsight.message ?? '신호와 이동수단을 함께 확인해 주세요.';
+  const summaryReason = summary?.movementBurden.assistiveInsight.reason;
+  const safetyReminder =
+    summary?.movementBurden.assistiveInsight.safetyReminder ??
+    '앱 안내는 참고용이며, 실제 현장 신호와 주변 상황을 우선 확인해 주세요.';
   const nearbyRows = summary
     ? [
         visibleCards.includes('signals')
@@ -206,36 +243,60 @@ export function HomePage() {
               </button>
             </div>
 
-            {summary ? (
-              <SummaryMap
-                coordinates={activeCoordinates}
-                onManualSelect={(next) => {
-                  setSelectedPlaceId(null);
-                  setManualLocation(next);
-                  setCompareOpen(false);
-                }}
-                selectionMode={selectionMode}
-                summary={summary}
-              />
-            ) : (
-              <div className="empty-map-panel">
-                <strong>{isLoading ? '주변 정보를 불러오고 있어요' : '지도를 준비하고 있어요'}</strong>
-                <p>위치를 기준으로 신호, 버스, 이동지원 정보를 정리합니다.</p>
-              </div>
-            )}
+            <SummaryMap
+              coordinates={activeCoordinates}
+              onManualSelect={(next) => {
+                setSelectedPlaceId(null);
+                setManualLocation(next);
+                setCompareOpen(false);
+              }}
+              selectionMode={selectionMode}
+              summary={summary}
+            />
           </div>
 
           <aside className="bottom-summary-sheet" aria-label="이동 정보 요약">
             <div className="sheet-handle" aria-hidden="true" />
 
-            {isLoading ? (
+            {!isSupportedArea ? (
+              <div className="support-area-card" role="status" aria-live="polite">
+                <span>지원 지역 안내</span>
+                <h1>아직 이 위치는 지원 범위 밖이에요</h1>
+                <p>
+                  지금은 실데이터가 안정적으로 확인된 서울과 울산을 중심으로 안내합니다.
+                  아래에서 먼저 확인할 지역을 골라 주세요.
+                </p>
+                <div className="verified-place-grid">
+                  {RECOMMENDED_PLACES.map((place) => (
+                    <button
+                      className="primary-button"
+                      key={place.id}
+                      onClick={() => chooseRecommendedPlace(place)}
+                      type="button"
+                    >
+                      {place.label}
+                    </button>
+                  ))}
+                  <button
+                    className="secondary-button"
+                    onClick={() => setSelectionMode(!selectionMode)}
+                    type="button"
+                  >
+                    {selectionMode ? '위치 선택 중' : '지도에서 고르기'}
+                  </button>
+                </div>
+                {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
+              </div>
+            ) : null}
+
+            {isSupportedArea && isLoading ? (
               <div className="sheet-message">
                 <strong>주변 정보를 불러오고 있어요</strong>
                 <p>잠시만 기다려 주세요.</p>
               </div>
             ) : null}
 
-            {isError ? (
+            {isSupportedArea && isError ? (
               <div className="sheet-message error">
                 <strong>정보를 가져오지 못했어요</strong>
                 <p>잠시 후 다시 시도해 주세요.</p>
@@ -250,8 +311,9 @@ export function HomePage() {
                 <div className="sheet-summary">
                   <div>
                     <span>지금은 {summary.movementBurden.label}</span>
-                    <h1>{getMoveSuggestion(summary.movementBurden.label)}</h1>
-                    <p>앱 안내보다 현장 신호와 주변 상황을 먼저 확인해 주세요.</p>
+                    <h1>{summaryMessage}</h1>
+                    <p>{safetyReminder}</p>
+                    {summaryReason ? <em className="assistive-reason">{summaryReason}</em> : null}
                   </div>
                   <div className="sheet-score-pill">
                     <strong>{summary.movementBurden.score}</strong>
@@ -296,7 +358,7 @@ export function HomePage() {
                 {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
 
                 <details className="recommended-places">
-                  <summary>추천 위치</summary>
+                  <summary>다른 검증 지역 보기</summary>
                   <div className="recommended-place-list">
                     {RECOMMENDED_PLACES.map((place) => (
                       <button
@@ -305,7 +367,7 @@ export function HomePage() {
                         onClick={() => chooseRecommendedPlace(place)}
                         type="button"
                       >
-                        <strong>{place.label}</strong>
+                        <strong>{place.unsupportedLabel}</strong>
                         <span>{place.description}</span>
                       </button>
                     ))}

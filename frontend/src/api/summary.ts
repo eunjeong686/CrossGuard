@@ -8,6 +8,7 @@ type SummaryOptions = {
   includeSignals?: boolean;
   includeBuses?: boolean;
   includeMobility?: boolean;
+  enabled?: boolean;
 };
 
 export function fetchSummary(lat: number, lng: number, options?: SummaryOptions) {

@@ -188,6 +188,90 @@ function getMovementBurden(
   };
 }
 
+function getAssistiveInsight({
+  movementLabel,
+  topSignal,
+  topBus,
+  topMobility,
+  freshnessMinutes,
+  enabledServices,
+}: {
+  movementLabel: SummaryData['movementBurden']['label'];
+  topSignal: SummaryData['topSignal'];
+  topBus: SummaryData['topBus'];
+  topMobility: SummaryData['topMobility'];
+  freshnessMinutes: number | null;
+  enabledServices: SummaryScope['enabledServices'];
+}): SummaryData['movementBurden']['assistiveInsight'] {
+  const hasSignal = enabledServices.includes('signals') && topSignal;
+  const hasBus = enabledServices.includes('buses') && topBus;
+  const hasMobility = enabledServices.includes('mobility') && topMobility;
+  const staleData = freshnessMinutes != null && freshnessMinutes > 10;
+
+  if (movementLabel === '높음') {
+    return {
+      message: '지금은 대체 이동수단을 먼저 살펴보세요.',
+      reason: hasMobility
+        ? '이동지원 상태와 주변 정보를 함께 보니 조금 더 보수적으로 보는 편이 좋습니다.'
+        : '확인된 주변 정보만으로는 여유를 충분히 판단하기 어려운 상태입니다.',
+      safetyReminder: '앱 안내는 참고용이며, 실제 현장 신호와 주변 상황을 우선 확인해 주세요.',
+      engine: 'local-rules',
+    };
+  }
+
+  if (hasSignal && topSignal.remainingSeconds != null && topSignal.remainingSeconds <= 5) {
+    return {
+      message: '신호가 곧 바뀔 수 있어 조금 더 기다려 보세요.',
+      reason: `가까운 신호의 남은 시간이 ${topSignal.remainingSeconds}초로 짧게 확인됐습니다.`,
+      safetyReminder: '신호 잔여시간은 참고용이며, 눈앞의 신호와 차량 흐름을 먼저 확인해 주세요.',
+      engine: 'local-rules',
+    };
+  }
+
+  if (hasBus && topBus.etaCategory === '촉박') {
+    return {
+      message: '버스보다 다음 선택지를 같이 보는 편이 좋아요.',
+      reason: `${topBus.routeNo}번 버스 상태가 촉박하게 분류되어 이동 여유를 낮게 반영했습니다.`,
+      safetyReminder: '버스를 서두르기보다 현장 이동 여건을 먼저 확인해 주세요.',
+      engine: 'local-rules',
+    };
+  }
+
+  if (hasMobility && topMobility.serviceStatus === '확인 필요') {
+    return {
+      message: '이동지원은 한 번 더 확인하고 움직이세요.',
+      reason: `${topMobility.centerName} 상태가 확인 필요로 분류되어 센터 확인을 권장합니다.`,
+      safetyReminder: '센터 운영 상황은 변동될 수 있으니 실제 예약 가능 여부를 함께 확인해 주세요.',
+      engine: 'local-rules',
+    };
+  }
+
+  if (staleData) {
+    return {
+      message: '정보가 조금 오래되어 현장 확인을 먼저 해주세요.',
+      reason: `가장 최근에 확인한 주변 정보가 약 ${freshnessMinutes}분 전 기준입니다.`,
+      safetyReminder: '앱 안내는 참고용이며, 실제 현장 신호와 주변 상황을 우선 확인해 주세요.',
+      engine: 'local-rules',
+    };
+  }
+
+  if (movementLabel === '낮음') {
+    return {
+      message: '현재 정보로는 이동 부담이 크지 않아 보여요.',
+      reason: '가까운 주변 정보와 갱신 상태를 함께 보니 비교적 여유가 있는 편으로 분류됐습니다.',
+      safetyReminder: '그래도 실제 현장 신호와 주변 상황을 우선 확인해 주세요.',
+      engine: 'local-rules',
+    };
+  }
+
+  return {
+    message: '신호와 이동수단을 함께 확인해 주세요.',
+    reason: '확인된 정보 중 일부는 여유가 있지만, 현장 판단을 함께 보는 편이 좋습니다.',
+    safetyReminder: '앱 안내는 참고용이며, 실제 현장 신호와 주변 상황을 우선 확인해 주세요.',
+    engine: 'local-rules',
+  };
+}
+
 export async function getLocationSummary(
   origin: Coordinates,
   stdg: StdgOverride,
@@ -225,6 +309,14 @@ export async function getLocationSummary(
       ? Math.round(scoreParts.reduce((sum, value) => sum + value, 0) / scoreParts.length)
       : 50;
   const movementBurden = getMovementBurden(score, scope.enabledServices, freshnessMinutes);
+  const assistiveInsight = getAssistiveInsight({
+    movementLabel: movementBurden.label,
+    topSignal,
+    topBus,
+    topMobility,
+    freshnessMinutes,
+    enabledServices: scope.enabledServices,
+  });
   const factors = [
     freshnessMinutes == null
       ? '데이터 신선도 정보를 충분히 확인하지 못해 보수적으로 반영했습니다.'
@@ -259,6 +351,7 @@ export async function getLocationSummary(
       confidenceLabel: getConfidenceLabel(freshnessMinutes),
       freshnessMinutes,
       factors,
+      assistiveInsight,
     },
     topSignal,
     topBus,

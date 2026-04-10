@@ -69,6 +69,12 @@ export type SummaryData = {
     confidenceLabel: '높음' | '보통' | '낮음';
     freshnessMinutes: number | null;
     factors: string[];
+    assistiveInsight: {
+      message: string;
+      reason: string;
+      safetyReminder: string;
+      engine: 'local-rules';
+    };
   };
   topSignal: SignalData | null;
   topBus: BusData | null;

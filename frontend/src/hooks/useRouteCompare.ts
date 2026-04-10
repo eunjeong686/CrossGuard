@@ -5,6 +5,7 @@ type RouteCompareOptions = {
   signalStdgCd?: string;
   busStdgCd?: string;
   mobilityStdgCd?: string;
+  enabled?: boolean;
 };
 
 export function useRouteCompare(
@@ -26,7 +27,8 @@ export function useRouteCompare(
       options?.mobilityStdgCd,
     ],
     queryFn: () => fetchRouteCompare(originLat, originLng, destLat, destLng, options),
+    enabled: options?.enabled ?? true,
     staleTime: 20_000,
-    refetchInterval: 30_000,
+    refetchInterval: options?.enabled === false ? false : 30_000,
   });
 }
