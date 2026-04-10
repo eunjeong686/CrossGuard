@@ -32,7 +32,7 @@ export function RouteCompareCard({
           >
             <div className="route-option-top">
               <div className="route-option-title">
-                <span className="card-icon route">{option.id === 'bus-priority' ? '버스' : '지원'}</span>
+                <span className="card-icon route">{option.id === 'bus-priority' ? '버스' : '신호'}</span>
                 <strong>{option.label}</strong>
               </div>
               <span className={`source-badge ${option.recommended ? 'live' : 'mock'}`}>
@@ -57,7 +57,7 @@ export function RouteCompareCard({
             <div className="route-tags">
               {option.includedServices.map((service) => (
                 <span key={service}>
-                  {service === 'signals' ? '신호' : service === 'buses' ? '버스' : '이동지원'}
+                  {service === 'signals' ? '신호' : service === 'buses' ? '버스' : '보조'}
                 </span>
               ))}
             </div>

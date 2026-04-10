@@ -74,29 +74,21 @@ export async function getRouteComparison(
   destination: Coordinates,
   stdg: StdgOverride,
 ): Promise<RouteCompareData> {
-  const [busPrioritySummary, mobilityPrioritySummary] = await Promise.all([
-    getLocationSummary(destination, stdg, {
-      includeSignals: true,
-      includeBuses: true,
-      includeMobility: false,
-      enabledServices: ['signals', 'buses'],
-    }),
-    getLocationSummary(destination, stdg, {
-      includeSignals: true,
-      includeBuses: false,
-      includeMobility: true,
-      enabledServices: ['signals', 'mobility'],
-    }),
-  ]);
+  const busPrioritySummary = await getLocationSummary(destination, stdg, {
+    includeSignals: true,
+    includeBuses: true,
+    includeMobility: false,
+    enabledServices: ['signals', 'buses'],
+  });
 
   const destinationDistanceMeters = Math.round(haversineMeters(origin, destination));
   const distancePenalty = getDistancePenalty(destinationDistanceMeters);
   const busPriorityScore = Math.max(30, busPrioritySummary.movementBurden.score - distancePenalty);
-  const mobilityPriorityScore = Math.max(
+  const signalPriorityScore = Math.max(
     30,
-    mobilityPrioritySummary.movementBurden.score - Math.max(0, distancePenalty - 2),
+    busPrioritySummary.movementBurden.score - Math.max(0, distancePenalty - 4),
   );
-  const recommendedOptionId = mobilityPriorityScore > busPriorityScore ? 'mobility-priority' : 'bus-priority';
+  const recommendedOptionId = signalPriorityScore > busPriorityScore ? 'signal-priority' : 'bus-priority';
 
   const busOption = buildOption({
     id: 'bus-priority',
@@ -111,18 +103,18 @@ export async function getRouteComparison(
     sourceLabels: toSourceLabels(['signals', 'buses'], busPrioritySummary.dataContext.serviceSources),
     recommended: recommendedOptionId === 'bus-priority',
   });
-  const mobilityOption = buildOption({
-    id: 'mobility-priority',
-    label: '이동지원 우선 검토',
-    score: mobilityPriorityScore,
+  const signalOption = buildOption({
+    id: 'signal-priority',
+    label: '신호 먼저 확인',
+    score: signalPriorityScore,
     note:
-      mobilityPrioritySummary.topMobility?.serviceStatus === '이용 가능'
-        ? '이동지원 가용 상태가 확인되어 걷는 부담을 줄이는 대안으로 유리합니다.'
-        : '이동지원 정보가 충분하지 않으면 버스보다 확실한 대안으로 보기 어려워 확인이 필요합니다.',
-    services: ['signals', 'mobility'],
-    confidenceLabel: mobilityPrioritySummary.movementBurden.confidenceLabel,
-    sourceLabels: toSourceLabels(['signals', 'mobility'], mobilityPrioritySummary.dataContext.serviceSources),
-    recommended: recommendedOptionId === 'mobility-priority',
+      busPrioritySummary.topSignal?.remainingSeconds != null
+        ? '가까운 신호 잔여시간을 먼저 확인하고 버스 쪽 이동 여유를 함께 보는 선택입니다.'
+        : '신호 잔여시간이 부족할 수 있어 현장 신호를 먼저 확인하는 선택입니다.',
+    services: ['signals', 'buses'],
+    confidenceLabel: busPrioritySummary.movementBurden.confidenceLabel,
+    sourceLabels: toSourceLabels(['signals', 'buses'], busPrioritySummary.dataContext.serviceSources),
+    recommended: recommendedOptionId === 'signal-priority',
   });
 
   return {
@@ -130,6 +122,6 @@ export async function getRouteComparison(
     destination,
     destinationDistanceMeters,
     recommendedOptionId,
-    options: [busOption, mobilityOption],
+    options: [busOption, signalOption],
   };
 }

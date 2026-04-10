@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Coordinates } from '../types/api';
 
 const FALLBACK_COORDINATES: Coordinates = {
-  lat: 37.5665,
-  lng: 126.978,
+  lat: 35.5384,
+  lng: 129.3114,
 };
 
 type LocationStatus = 'idle' | 'loading' | 'granted' | 'fallback' | 'error';
@@ -13,7 +13,7 @@ export function useLocation() {
   const [coordinates, setCoordinates] = useState<Coordinates>(FALLBACK_COORDINATES);
   const [status, setStatus] = useState<LocationStatus>(hasGeolocation ? 'loading' : 'fallback');
   const [errorMessage, setErrorMessage] = useState<string | null>(
-    hasGeolocation ? null : '브라우저 위치 기능을 사용할 수 없어 서울시청 기준으로 보여드립니다.',
+    hasGeolocation ? null : '브라우저 위치 기능을 사용할 수 없어 울산 신호·버스 기준으로 보여드립니다.',
   );
   const [selectionMode, setSelectionMode] = useState(false);
 
@@ -37,7 +37,7 @@ export function useLocation() {
       },
       () => {
         setStatus('fallback');
-        setErrorMessage('위치 권한이 없어서 서울시청 기준으로 보여드리고 있습니다.');
+        setErrorMessage('위치 권한이 없어서 울산 신호·버스 기준으로 보여드리고 있습니다.');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     );
@@ -58,7 +58,7 @@ export function useLocation() {
       },
       () => {
         setStatus('fallback');
-        setErrorMessage('위치 권한이 없어서 서울시청 기준으로 보여드리고 있습니다.');
+        setErrorMessage('위치 권한이 없어서 울산 신호·버스 기준으로 보여드리고 있습니다.');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     );
@@ -76,7 +76,7 @@ export function useLocation() {
       return '현재 또는 직접 선택한 위치';
     }
 
-    return '기본 위치(서울시청)';
+    return '기본 위치(울산)';
   }, [status]);
 
   return {

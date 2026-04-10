@@ -88,7 +88,7 @@ export type SummaryPayload = {
 };
 
 export type RouteCompareOption = {
-  id: 'bus-priority' | 'mobility-priority';
+  id: 'bus-priority' | 'signal-priority';
   label: string;
   burden: BurdenLabel;
   score: number;

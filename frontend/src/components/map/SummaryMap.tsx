@@ -173,18 +173,24 @@ export function SummaryMap({
     <div className="map-card app-map-card">
       <div aria-label={selectionMode ? '위치 선택 지도' : '주변 정보 지도'} className={`map-board${selectionMode ? ' selecting' : ''}`}>
         <div className="map-overlay-panel">
-          <div className="map-stat-pill">
-            <strong>{summary?.signals.length ?? 0}</strong>
-            <span>신호</span>
-          </div>
-          <div className="map-stat-pill">
-            <strong>{summary?.buses.length ?? 0}</strong>
-            <span>버스</span>
-          </div>
-          <div className="map-stat-pill">
-            <strong>{summary?.mobilityCenters.length ?? 0}</strong>
-            <span>이동지원</span>
-          </div>
+          {!summary || summary.dataContext.enabledServices.includes('signals') ? (
+            <div className="map-stat-pill">
+              <strong>{summary?.signals.length ?? 0}</strong>
+              <span>신호</span>
+            </div>
+          ) : null}
+          {!summary || summary.dataContext.enabledServices.includes('buses') ? (
+            <div className="map-stat-pill">
+              <strong>{summary?.buses.length ?? 0}</strong>
+              <span>버스</span>
+            </div>
+          ) : null}
+          {summary?.dataContext.enabledServices.includes('mobility') ? (
+            <div className="map-stat-pill">
+              <strong>{summary.mobilityCenters.length}</strong>
+              <span>이동지원</span>
+            </div>
+          ) : null}
         </div>
         <div className="leaflet-map" ref={mapElementRef} />
         {selectionMode ? <div className="map-select-hint">지도를 눌러 위치를 고르세요</div> : null}

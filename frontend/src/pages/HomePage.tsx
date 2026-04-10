@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState, type PointerEvent } from 'react';
 import { RouteCompareCard } from '../components/cards/RouteCompareCard';
 import { AppShell } from '../components/layout/AppShell';
 import { SummaryMap } from '../components/map/SummaryMap';
@@ -9,11 +9,10 @@ import { useUiStore } from '../stores/uiStore';
 import { formatRelativeTime } from '../utils/format';
 
 type RecommendedPlace = {
-  id: 'ulsan-live' | 'seoul-mobility';
+  id: 'ulsan-live';
   label: string;
   description: string;
   currentLabel: string;
-  unsupportedLabel: string;
   coordinates: { lat: number; lng: number };
   signalStdgCd?: string;
   busStdgCd?: string;
@@ -32,18 +31,19 @@ type SupportedArea = {
 };
 
 type CompareTarget = {
-  id: 'bus-stop' | 'support-center' | 'safe-crossing';
+  id: 'bus-stop' | 'safe-crossing';
   label: string;
   description: string;
   offset: { lat: number; lng: number };
 };
+
+type SheetState = 'collapsed' | 'mid' | 'expanded';
 
 const RECOMMENDED_PLACES: RecommendedPlace[] = [
   {
     id: 'ulsan-live',
     label: '울산 신호·버스 보기',
     currentLabel: '울산 주변',
-    unsupportedLabel: '울산에서 신호와 버스를 확인해요',
     description: '걷기 전 신호와 버스 정보를 먼저 살펴봅니다.',
     coordinates: { lat: 35.5384, lng: 129.3114 },
     signalStdgCd: '3100000000',
@@ -51,25 +51,9 @@ const RECOMMENDED_PLACES: RecommendedPlace[] = [
     mobilityStdgCd: '3100000000',
     supportedCards: ['signals', 'buses'],
   },
-  {
-    id: 'seoul-mobility',
-    label: '서울 이동지원 보기',
-    currentLabel: '서울 주변',
-    unsupportedLabel: '서울에서 이동지원을 확인해요',
-    description: '이동지원 정보를 먼저 확인합니다.',
-    coordinates: { lat: 37.5665, lng: 126.978 },
-    signalStdgCd: '1100000000',
-    busStdgCd: '1100000000',
-    mobilityStdgCd: '1100000000',
-    supportedCards: ['mobility'],
-  },
 ];
 
 const SUPPORTED_AREAS: SupportedArea[] = [
-  {
-    id: 'seoul-mobility',
-    bounds: { minLat: 37.42, maxLat: 37.7, minLng: 126.76, maxLng: 127.2 },
-  },
   {
     id: 'ulsan-live',
     bounds: { minLat: 35.3, maxLat: 35.75, minLng: 129, maxLng: 129.47 },
@@ -82,12 +66,6 @@ const COMPARE_TARGETS: CompareTarget[] = [
     label: '버스 쪽으로 가기',
     description: '버스를 탈지, 다른 이동 수단을 볼지 비교합니다.',
     offset: { lat: 0.0012, lng: -0.0008 },
-  },
-  {
-    id: 'support-center',
-    label: '이동지원 쪽으로 가기',
-    description: '이동지원 쪽으로 움직일 때 더 편한지 살펴봅니다.',
-    offset: { lat: -0.001, lng: 0.0009 },
   },
   {
     id: 'safe-crossing',
@@ -113,6 +91,18 @@ function getPlaceProfileById(id: RecommendedPlace['id']) {
   return RECOMMENDED_PLACES.find((place) => place.id === id) ?? RECOMMENDED_PLACES[0];
 }
 
+function getNextSheetState(state: SheetState): SheetState {
+  if (state === 'collapsed') {
+    return 'mid';
+  }
+
+  if (state === 'mid') {
+    return 'expanded';
+  }
+
+  return 'collapsed';
+}
+
 export function HomePage() {
   const {
     coordinates,
@@ -127,6 +117,9 @@ export function HomePage() {
   const [selectedCompareTargetId, setSelectedCompareTargetId] =
     useState<CompareTarget['id']>('bus-stop');
   const [compareOpen, setCompareOpen] = useState(false);
+  const [scoreOpen, setScoreOpen] = useState(false);
+  const [sheetState, setSheetState] = useState<SheetState>('mid');
+  const sheetDragStartY = useRef<number | null>(null);
   const { largeText, simpleMode, toggleLargeText, toggleSimpleMode } = useUiStore();
   const selectedPlace =
     RECOMMENDED_PLACES.find((place) => place.id === selectedPlaceId) ?? null;
@@ -197,28 +190,103 @@ export function HomePage() {
         visibleCards.includes('buses')
           ? {
               id: 'buses',
-              label: '버스',
+              label: '버스 여유',
               title: summary.topBus
                 ? `${summary.topBus.routeType} ${summary.topBus.routeNo}번`
                 : '가까운 버스 정보 없음',
               value: summary.topBus?.etaCategory ?? '확인 필요',
             }
           : null,
-        visibleCards.includes('mobility')
+        visibleCards.includes('buses')
           ? {
-              id: 'mobility',
-              label: '이동지원',
-              title: summary.topMobility?.centerName ?? '가까운 이동지원 정보 없음',
-              value: summary.topMobility?.serviceStatus ?? '확인 필요',
+              id: 'bus-distance',
+              label: '정류장까지',
+              title: summary.topBus?.nearStopName ?? '가까운 정류장 정보 없음',
+              value:
+                summary.topBus?.stopDistanceMeters != null
+                  ? `약 ${Math.round(summary.topBus.stopDistanceMeters)}m`
+                  : '확인 필요',
             }
           : null,
+        {
+          id: 'freshness',
+          label: '마지막 확인',
+          title: summary.movementBurden.confidenceLabel === '낮음' ? '한 번 더 확인이 필요해요' : '방금 확인한 정보예요',
+          value: formatRelativeTime(summary.lastUpdatedAt),
+        },
       ].filter((row) => row != null)
     : [];
+  const simpleRows = summary
+    ? [
+        {
+          label: '신호 참고',
+          value:
+            summary.topSignal?.remainingSeconds != null
+              ? `${summary.topSignal.remainingSeconds}초 남음`
+              : (summary.topSignal?.pedestrianSignalStatusLabel ?? '확인 필요'),
+        },
+        {
+          label: '버스 여유',
+          value: summary.topBus?.etaCategory ?? '확인 필요',
+        },
+        {
+          label: '현장 확인',
+          value: '앱보다 눈앞의 신호를 우선해 주세요',
+        },
+      ]
+    : [];
+
+  function handleSheetPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    sheetDragStartY.current = event.clientY;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleSheetPointerUp(event: PointerEvent<HTMLButtonElement>) {
+    const startY = sheetDragStartY.current;
+    sheetDragStartY.current = null;
+
+    if (startY === null) {
+      return;
+    }
+
+    const deltaY = event.clientY - startY;
+
+    if (Math.abs(deltaY) < 36) {
+      setSheetState((state) => getNextSheetState(state));
+      return;
+    }
+
+    if (deltaY > 0) {
+      setSheetState((state) => (state === 'expanded' ? 'mid' : 'collapsed'));
+      return;
+    }
+
+    setSheetState((state) => (state === 'collapsed' ? 'mid' : 'expanded'));
+  }
+
+  function handleSheetPointerCancel() {
+    sheetDragStartY.current = null;
+  }
 
   function chooseRecommendedPlace(place: RecommendedPlace) {
     setSelectedPlaceId(place.id);
     setManualLocation(place.coordinates);
     setCompareOpen(false);
+    setSheetState('mid');
+  }
+
+  function handleManualSelect(next: { lat: number; lng: number }) {
+    setSelectedPlaceId(null);
+    setManualLocation(next);
+    setCompareOpen(false);
+    setSheetState('mid');
+  }
+
+  function handleCurrentLocation() {
+    setSelectedPlaceId(null);
+    requestCurrentLocation();
+    setCompareOpen(false);
+    setSheetState('mid');
   }
 
   return (
@@ -231,40 +299,38 @@ export function HomePage() {
                 <span>{isFetching ? '정보 확인 중' : '걷기 전 확인'}</span>
                 <strong>{placeLabel}</strong>
               </div>
-              <button
-                className="mini-map-button"
-                onClick={() => {
-                  setSelectedPlaceId(null);
-                  requestCurrentLocation();
-                }}
-                type="button"
-              >
+              <button className="mini-map-button" onClick={handleCurrentLocation} type="button">
                 내 위치
               </button>
             </div>
 
             <SummaryMap
               coordinates={activeCoordinates}
-              onManualSelect={(next) => {
-                setSelectedPlaceId(null);
-                setManualLocation(next);
-                setCompareOpen(false);
-              }}
+              onManualSelect={handleManualSelect}
               selectionMode={selectionMode}
               summary={summary}
             />
           </div>
 
-          <aside className="bottom-summary-sheet" aria-label="이동 정보 요약">
-            <div className="sheet-handle" aria-hidden="true" />
+          <aside className={`bottom-summary-sheet ${sheetState}`} aria-label="이동 정보 요약">
+            <button
+              aria-label={`정보 시트 상태 변경, 현재 ${sheetState}`}
+              className="sheet-handle"
+              onPointerCancel={handleSheetPointerCancel}
+              onPointerDown={handleSheetPointerDown}
+              onPointerUp={handleSheetPointerUp}
+              type="button"
+            >
+              <span aria-hidden="true" />
+            </button>
 
             {!isSupportedArea ? (
               <div className="support-area-card" role="status" aria-live="polite">
                 <span>지원 지역 안내</span>
                 <h1>아직 이 위치는 지원 범위 밖이에요</h1>
                 <p>
-                  지금은 실데이터가 안정적으로 확인된 서울과 울산을 중심으로 안내합니다.
-                  아래에서 먼저 확인할 지역을 골라 주세요.
+                  지금은 신호와 버스 실데이터가 안정적으로 확인된 울산을 중심으로 안내합니다.
+                  아래에서 바로 확인할 수 있어요.
                 </p>
                 <div className="verified-place-grid">
                   {RECOMMENDED_PLACES.map((place) => (
@@ -315,21 +381,30 @@ export function HomePage() {
                     <p>{safetyReminder}</p>
                     {summaryReason ? <em className="assistive-reason">{summaryReason}</em> : null}
                   </div>
-                  <div className="sheet-score-pill">
-                    <strong>{summary.movementBurden.score}</strong>
-                    <span>점</span>
+                  <div className="score-cluster">
+                    <div className="sheet-score-pill">
+                      <strong>{summary.movementBurden.score}점</strong>
+                      <span>참고 지표</span>
+                    </div>
+                    <button
+                      className="score-help-button"
+                      onClick={() => setScoreOpen((open) => !open)}
+                      type="button"
+                    >
+                      점수 뜻
+                    </button>
                   </div>
                 </div>
 
+                {scoreOpen ? (
+                  <div className="score-help-panel">
+                    신호 잔여시간, 버스 여유, 정류장 거리, 데이터 최신성을 합친 참고 지표입니다.
+                    실제 이동 판단은 현장 상황을 우선해 주세요.
+                  </div>
+                ) : null}
+
                 <div className="sheet-action-grid">
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      setSelectedPlaceId(null);
-                      requestCurrentLocation();
-                    }}
-                    type="button"
-                  >
+                  <button className="primary-button" onClick={handleCurrentLocation} type="button">
                     내 위치로 보기
                   </button>
                   <button
@@ -357,39 +432,29 @@ export function HomePage() {
 
                 {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
 
-                <details className="recommended-places">
-                  <summary>다른 검증 지역 보기</summary>
-                  <div className="recommended-place-list">
-                    {RECOMMENDED_PLACES.map((place) => (
-                      <button
-                        className={selectedPlaceId === place.id ? 'active' : ''}
-                        key={place.id}
-                        onClick={() => chooseRecommendedPlace(place)}
-                        type="button"
-                      >
-                        <strong>{place.unsupportedLabel}</strong>
-                        <span>{place.description}</span>
-                      </button>
-                    ))}
-                  </div>
-                </details>
-
-                <div className="nearby-list">
-                  {nearbyRows.map((row) => (
-                    <article className="nearby-row" key={row.id}>
-                      <span>{row.label}</span>
-                      <strong>{row.title}</strong>
-                      <em>{row.value}</em>
-                    </article>
-                  ))}
-                </div>
-
                 {simpleMode ? (
                   <div className="simple-sheet-note">
                     <strong>간단히 보는 중</strong>
-                    <p>꼭 필요한 정보만 먼저 보여드리고 있어요.</p>
+                    <div className="simple-row-list">
+                      {simpleRows.map((row) => (
+                        <p key={row.label}>
+                          <span>{row.label}</span>
+                          <strong>{row.value}</strong>
+                        </p>
+                      ))}
+                    </div>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="nearby-list">
+                    {nearbyRows.map((row) => (
+                      <article className="nearby-row" key={row.id}>
+                        <span>{row.label}</span>
+                        <strong>{row.title}</strong>
+                        <em>{row.value}</em>
+                      </article>
+                    ))}
+                  </div>
+                )}
 
                 {!simpleMode ? (
                   <div className="compare-drawer">
