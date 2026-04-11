@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import type { Coordinates } from '../types/internal.js';
+import type { Coordinates, PaceProfile, Persona } from '../types/internal.js';
 import { HttpError } from './errors.js';
 
 function parseCoordinate(value: unknown, name: 'lat' | 'lng') {
@@ -25,4 +25,20 @@ export function parseCoordinatesFromRequest(request: Request): Coordinates {
     lat: parseCoordinate(request.query.lat, 'lat'),
     lng: parseCoordinate(request.query.lng, 'lng'),
   };
+}
+
+export function parsePersonaFromRequest(request: Request): Persona {
+  if (request.query.persona === 'elder' || request.query.persona === 'guardian') {
+    return request.query.persona;
+  }
+
+  return 'default';
+}
+
+export function parsePaceProfileFromRequest(request: Request): PaceProfile {
+  if (request.query.paceProfile === 'slow') {
+    return 'slow';
+  }
+
+  return 'default';
 }

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchSummary } from '../api/summary';
+import type { PaceProfile, Persona } from '../types/api';
 
 type SummaryOptions = {
   signalStdgCd?: string;
@@ -8,6 +9,8 @@ type SummaryOptions = {
   includeSignals?: boolean;
   includeBuses?: boolean;
   includeMobility?: boolean;
+  persona?: Persona;
+  paceProfile?: PaceProfile;
   enabled?: boolean;
 };
 
@@ -23,6 +26,8 @@ export function useSummary(lat: number, lng: number, options?: SummaryOptions) {
       options?.includeSignals,
       options?.includeBuses,
       options?.includeMobility,
+      options?.persona,
+      options?.paceProfile,
     ],
     queryFn: () => fetchSummary(lat, lng, options),
     enabled: options?.enabled ?? true,

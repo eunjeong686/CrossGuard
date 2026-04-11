@@ -7,6 +7,7 @@ import { useRouteCompare } from '../hooks/useRouteCompare';
 import { useSummary } from '../hooks/useSummary';
 import { useUiStore } from '../stores/uiStore';
 import { formatRelativeTime } from '../utils/format';
+import type { PaceProfile, Persona } from '../types/api';
 
 type RecommendedPlace = {
   id: 'ulsan-live';
@@ -38,6 +39,12 @@ type CompareTarget = {
 };
 
 type SheetState = 'collapsed' | 'mid' | 'expanded';
+type ScenarioOption = {
+  id: Persona;
+  label: string;
+  subtitle: string;
+  goal: string;
+};
 
 const RECOMMENDED_PLACES: RecommendedPlace[] = [
   {
@@ -75,6 +82,21 @@ const COMPARE_TARGETS: CompareTarget[] = [
   },
 ];
 
+const SCENARIO_OPTIONS: ScenarioOption[] = [
+  {
+    id: 'elder',
+    label: '천천히 걷는 사용자',
+    subtitle: '건너기 전 신호와 정류장 접근을 더 보수적으로 봅니다.',
+    goal: '건너기 전 신호',
+  },
+  {
+    id: 'guardian',
+    label: '보호자와 함께 보기',
+    subtitle: '설명과 데이터 최신성을 더 자세히 보여줍니다.',
+    goal: '근거와 확인 포인트',
+  },
+];
+
 function getSupportedArea(coordinates: { lat: number; lng: number }) {
   return (
     SUPPORTED_AREAS.find(
@@ -89,6 +111,18 @@ function getSupportedArea(coordinates: { lat: number; lng: number }) {
 
 function getPlaceProfileById(id: RecommendedPlace['id']) {
   return RECOMMENDED_PLACES.find((place) => place.id === id) ?? RECOMMENDED_PLACES[0];
+}
+
+function getServiceSourceLabel(source?: 'live' | 'mock' | 'disabled') {
+  if (source === 'live') {
+    return '실시간 연동';
+  }
+
+  if (source === 'mock') {
+    return '보조 예시';
+  }
+
+  return '숨김';
 }
 
 function getNextSheetState(state: SheetState): SheetState {
@@ -116,8 +150,10 @@ export function HomePage() {
   const [selectedPlaceId, setSelectedPlaceId] = useState<RecommendedPlace['id'] | null>(null);
   const [selectedCompareTargetId, setSelectedCompareTargetId] =
     useState<CompareTarget['id']>('bus-stop');
+  const [persona, setPersona] = useState<Persona>('elder');
   const [compareOpen, setCompareOpen] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [sheetState, setSheetState] = useState<SheetState>('mid');
   const sheetDragStartY = useRef<number | null>(null);
   const { largeText, simpleMode, toggleLargeText, toggleSimpleMode } = useUiStore();
@@ -128,6 +164,7 @@ export function HomePage() {
   const activePlaceProfile = selectedPlace ?? (supportedArea ? getPlaceProfileById(supportedArea.id) : null);
   const isSupportedArea = Boolean(activePlaceProfile);
   const visibleCards = activePlaceProfile?.supportedCards ?? [];
+  const paceProfile: PaceProfile = persona === 'elder' ? 'slow' : 'default';
   const summaryOptions = {
     signalStdgCd: activePlaceProfile?.signalStdgCd,
     busStdgCd: activePlaceProfile?.busStdgCd,
@@ -135,6 +172,8 @@ export function HomePage() {
     includeSignals: visibleCards.includes('signals'),
     includeBuses: visibleCards.includes('buses'),
     includeMobility: visibleCards.includes('mobility'),
+    persona,
+    paceProfile,
     enabled: isSupportedArea,
   };
   const { data, isLoading, isError, refetch, isFetching } = useSummary(
@@ -167,6 +206,8 @@ export function HomePage() {
     compareOptions,
   );
   const compare = compareData?.data;
+  const selectedScenario =
+    SCENARIO_OPTIONS.find((option) => option.id === persona) ?? SCENARIO_OPTIONS[0];
   const placeLabel = selectedPlace?.label ?? activePlaceProfile?.currentLabel ?? locationLabel;
   const summaryMessage =
     summary?.movementBurden.assistiveInsight.message ?? '신호와 이동수단을 함께 확인해 주세요.';
@@ -179,11 +220,11 @@ export function HomePage() {
         visibleCards.includes('signals')
           ? {
               id: 'signals',
-              label: '횡단보도',
+              label: '가까운 신호',
               title: summary.topSignal?.intersectionName ?? '가까운 신호 정보 없음',
               value:
                 summary.topSignal?.remainingSeconds != null
-                  ? `${summary.topSignal.remainingSeconds}초 남음`
+                  ? `${summary.topSignal.remainingSeconds}초 남음 · ${summary.topSignal.intersectionComplexity}`
                   : (summary.topSignal?.pedestrianSignalStatusLabel ?? '확인 필요'),
             }
           : null,
@@ -192,7 +233,7 @@ export function HomePage() {
               id: 'buses',
               label: '버스 여유',
               title: summary.topBus
-                ? `${summary.topBus.routeType} ${summary.topBus.routeNo}번`
+                ? `${summary.topBus.routeType} ${summary.topBus.routeNo}번 · ${summary.topBus.routeTerminus ?? '종점 확인 중'}`
                 : '가까운 버스 정보 없음',
               value: summary.topBus?.etaCategory ?? '확인 필요',
             }
@@ -204,15 +245,15 @@ export function HomePage() {
               title: summary.topBus?.nearStopName ?? '가까운 정류장 정보 없음',
               value:
                 summary.topBus?.stopDistanceMeters != null
-                  ? `약 ${Math.round(summary.topBus.stopDistanceMeters)}m`
+                  ? `약 ${Math.round(summary.topBus.stopDistanceMeters)}m · 접근 ${summary.topBus.stopAccessStatus}`
                   : '확인 필요',
             }
           : null,
         {
-          id: 'freshness',
-          label: '마지막 확인',
-          title: summary.movementBurden.confidenceLabel === '낮음' ? '한 번 더 확인이 필요해요' : '방금 확인한 정보예요',
-          value: formatRelativeTime(summary.lastUpdatedAt),
+          id: 'walk-access',
+          label: '보행 접근',
+          title: summary.walkContext.note,
+          value: summary.walkContext.accessibilityLabel,
         },
       ].filter((row) => row != null)
     : [];
@@ -374,11 +415,42 @@ export function HomePage() {
 
             {summary ? (
               <>
+                <div className="service-identity-card">
+                  <div className="identity-pill-row">
+                    <span>교통약자 출발 전 판단 보조</span>
+                    <span>길찾기보다 지금 판단</span>
+                  </div>
+                  <h2>길찾기 앱이 아니라, 지금 출발해도 덜 불안한지 먼저 봐요</h2>
+                  <p>
+                    신호와 버스 실시간 정보를 교통약자 관점으로 다시 읽어, 건너기 전 신호와
+                    버스 탈 여유, 정류장 접근 부담을 먼저 보여줍니다.
+                  </p>
+                  <div className="value-chip-row">
+                    <span>건너기 전 신호</span>
+                    <span>버스 탈 여유</span>
+                    <span>정류장 접근 부담</span>
+                  </div>
+                </div>
+
+                <div className="scenario-selector">
+                  {SCENARIO_OPTIONS.map((option) => (
+                    <button
+                      className={persona === option.id ? 'active' : ''}
+                      key={option.id}
+                      onClick={() => setPersona(option.id)}
+                      type="button"
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.subtitle}</span>
+                    </button>
+                  ))}
+                </div>
+
                 <div className="sheet-summary">
                   <div>
-                    <span>지금은 {summary.movementBurden.label}</span>
+                    <span>{selectedScenario.goal}</span>
                     <h1>{summaryMessage}</h1>
-                    <p>{safetyReminder}</p>
+                    <p>{summary.movementBurden.whyNow}</p>
                     {summaryReason ? <em className="assistive-reason">{summaryReason}</em> : null}
                   </div>
                   <div className="score-cluster">
@@ -398,8 +470,21 @@ export function HomePage() {
 
                 {scoreOpen ? (
                   <div className="score-help-panel">
-                    신호 잔여시간, 버스 여유, 정류장 거리, 데이터 최신성을 합친 참고 지표입니다.
-                    실제 이동 판단은 현장 상황을 우선해 주세요.
+                    <p>
+                      신호 잔여시간, 버스 여유, 교차로 복잡도, 정류장 접근 부담, 데이터 최신성을
+                      합친 참고 지표입니다.
+                    </p>
+                    <div className="score-breakdown-list">
+                      {summary.movementBurden.scoreBreakdown.map((item) => (
+                        <article key={item.id}>
+                          <div>
+                            <strong>{item.label}</strong>
+                            <span>{item.score}점</span>
+                          </div>
+                          <p>{item.reason}</p>
+                        </article>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
 
@@ -431,6 +516,11 @@ export function HomePage() {
                 </div>
 
                 {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
+
+                <div className="why-different-card">
+                  <strong>왜 다른가</strong>
+                  <p>일반 지도앱이 길과 도착을 보여준다면, SafeCross는 출발 직전의 부담 판단을 먼저 돕습니다.</p>
+                </div>
 
                 {simpleMode ? (
                   <div className="simple-sheet-note">
@@ -498,6 +588,64 @@ export function HomePage() {
                     ) : null}
                   </div>
                 ) : null}
+
+                <div className="concern-card">
+                  <strong>왜 이렇게 안내하나요?</strong>
+                  <p>{summary.movementBurden.whyNow}</p>
+                  <div className="concern-list">
+                    {summary.movementBurden.topConcerns.length > 0 ? (
+                      summary.movementBurden.topConcerns.map((concern) => <span key={concern}>{concern}</span>)
+                    ) : (
+                      <span>현재는 과도한 주의 요소보다 현장 확인을 함께 권장하는 상태입니다.</span>
+                    )}
+                  </div>
+                  <em>{safetyReminder}</em>
+                </div>
+
+                <div className="scenario-card-grid">
+                  <article>
+                    <strong>천천히 걸어 버스를 타러 갈 때</strong>
+                    <p>신호가 곧 바뀌는지와 정류장까지 접근 부담을 같이 보고 서두를 필요가 있는지 확인합니다.</p>
+                  </article>
+                  <article>
+                    <strong>보호자가 함께 확인할 때</strong>
+                    <p>데이터 최신성과 주의 포인트를 더 자세히 보고 출발 전에 같이 판단할 수 있습니다.</p>
+                  </article>
+                </div>
+
+                <div className="evidence-card">
+                  <button
+                    className="compare-toggle"
+                    onClick={() => setEvidenceOpen((open) => !open)}
+                    type="button"
+                  >
+                    <span>데이터 근거 보기</span>
+                    <strong>{evidenceOpen ? '닫기' : '보기'}</strong>
+                  </button>
+
+                  {evidenceOpen ? (
+                    <div className="evidence-card-body">
+                      <div className="evidence-grid">
+                        <article>
+                          <strong>신호 데이터</strong>
+                          <p>{getServiceSourceLabel(summary.dataContext.serviceSources.signals)} · 교차로 기본 정보와 잔여시간을 함께 봅니다.</p>
+                        </article>
+                        <article>
+                          <strong>버스 데이터</strong>
+                          <p>{getServiceSourceLabel(summary.dataContext.serviceSources.buses)} · 노선, 종점, 가까운 정류장 맥락을 함께 봅니다.</p>
+                        </article>
+                        <article>
+                          <strong>보행 맥락</strong>
+                          <p>{summary.walkContext.source === 'osm' ? 'OpenStreetMap 기반' : '기본 추정치'} · 횡단보도, 계단, 정류장 접근 단서를 함께 봅니다.</p>
+                        </article>
+                      </div>
+                      <p className="evidence-note">
+                        울산은 신호와 버스 실데이터가 함께 안정적으로 검증된 지역이라 기본 기준
+                        위치로 사용합니다.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
 
                 <div className="sheet-footnote">
                   <span>마지막 확인 {formatRelativeTime(summary.lastUpdatedAt)}</span>

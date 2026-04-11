@@ -97,6 +97,9 @@ function getMockSignals(origin: Coordinates): SignalData[] {
       pedestrianSignalStatusLabel: '보행 가능',
       remainingSeconds: 19,
       direction: 'NE',
+      speedLimit: 30,
+      laneWidth: 3.2,
+      intersectionComplexity: '주의',
       collectedAt: now,
       advisoryOnly: true,
     },
@@ -108,6 +111,9 @@ function getMockSignals(origin: Coordinates): SignalData[] {
       pedestrianSignalStatusLabel: '보행 불가',
       remainingSeconds: 46,
       direction: 'S',
+      speedLimit: 40,
+      laneWidth: 3.5,
+      intersectionComplexity: '복잡',
       collectedAt: now,
       advisoryOnly: true,
     },
@@ -119,10 +125,31 @@ function getMockSignals(origin: Coordinates): SignalData[] {
       pedestrianSignalStatusLabel: '정보 없음',
       remainingSeconds: null,
       direction: 'W',
+      speedLimit: 30,
+      laneWidth: 2.8,
+      intersectionComplexity: '단순',
       collectedAt: now,
       advisoryOnly: true,
     },
   ];
+}
+
+function getIntersectionComplexity({
+  speedLimit,
+  laneWidth,
+}: {
+  speedLimit: number | null;
+  laneWidth: number | null;
+}): SignalData['intersectionComplexity'] {
+  if ((speedLimit ?? 0) >= 50 || (laneWidth ?? 0) >= 4) {
+    return '복잡';
+  }
+
+  if ((speedLimit ?? 0) >= 40 || (laneWidth ?? 0) >= 3) {
+    return '주의';
+  }
+
+  return '단순';
 }
 
 async function getLiveSignals(
@@ -170,6 +197,8 @@ async function getLiveSignals(
       }
 
       const directionItem = directionByIntersectionId.get(intersectionId);
+      const speedLimit = parseNumberValue(item.lmttSpd);
+      const laneWidth = parseNumberValue(item.laneWdth);
       const normalizedDirection = directionItem
         ? normalizeSignalDirection(directionItem)
         : {
@@ -188,6 +217,9 @@ async function getLiveSignals(
         pedestrianSignalStatusLabel: normalizedDirection.pedestrianSignalStatusLabel,
         remainingSeconds: normalizedDirection.remainingSeconds,
         direction: normalizedDirection.direction,
+        speedLimit,
+        laneWidth,
+        intersectionComplexity: getIntersectionComplexity({ speedLimit, laneWidth }),
         collectedAt: parseTimestamp(directionItem?.totDt ?? item.totDt),
         advisoryOnly: true as const,
       };

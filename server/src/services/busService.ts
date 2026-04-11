@@ -37,6 +37,18 @@ function getEtaCategory({
   return '촉박';
 }
 
+function getStopAccessStatus(stopDistanceMeters: number | null): BusData['stopAccessStatus'] {
+  if (stopDistanceMeters == null || stopDistanceMeters > 320) {
+    return '주의';
+  }
+
+  if (stopDistanceMeters > 180) {
+    return '보통';
+  }
+
+  return '편함';
+}
+
 function getMockBuses(origin: Coordinates): BusData[] {
   const stop = offsetCoordinates(origin, 0.0013, -0.0002);
   const now = new Date().toISOString();
@@ -46,40 +58,52 @@ function getMockBuses(origin: Coordinates): BusData[] {
       routeId: 'bus-1',
       routeNo: '400',
       routeType: '간선',
+      routeOrigin: '시청앞',
+      routeTerminus: '종합운동장',
       vehicleNo: '74가1234',
       ...offsetCoordinates(origin, 0.0025, -0.0008),
       speed: 19,
       heading: 188,
       lastUpdatedAt: now,
       nearStopName: '시청앞',
+      stopSequence: 4,
       etaCategory: '여유 있음',
       stopDistanceMeters: getDistanceMeters(origin, stop),
+      stopAccessStatus: '편함',
     },
     {
       routeId: 'bus-2',
       routeNo: '702A',
       routeType: '지선',
+      routeOrigin: '프레스센터',
+      routeTerminus: '회차지',
       vehicleNo: '72나9831',
       ...offsetCoordinates(origin, -0.0008, 0.0015),
       speed: 10,
       heading: 42,
       lastUpdatedAt: now,
       nearStopName: '프레스센터',
+      stopSequence: 7,
       etaCategory: '주의 필요',
       stopDistanceMeters: 210,
+      stopAccessStatus: '보통',
     },
     {
       routeId: 'bus-3',
       routeNo: '01A',
       routeType: '순환',
+      routeOrigin: '서울도서관',
+      routeTerminus: '도심순환',
       vehicleNo: '미확인',
       ...offsetCoordinates(origin, -0.002, -0.0012),
       speed: null,
       heading: null,
       lastUpdatedAt: now,
       nearStopName: '서울도서관',
+      stopSequence: 11,
       etaCategory: '정보 부족',
       stopDistanceMeters: 320,
+      stopAccessStatus: '주의',
     },
   ];
 }
@@ -164,6 +188,8 @@ async function getLiveBuses(
         routeId,
         routeNo: parseStringValue(item.rteNo) ?? parseStringValue(routeInfo?.rteNo) ?? '정보 없음',
         routeType: parseStringValue(routeInfo?.rteType) ?? '정보 없음',
+        routeOrigin: parseStringValue(routeInfo?.stpnt),
+        routeTerminus: parseStringValue(routeInfo?.edpnt),
         vehicleNo,
         lat,
         lng,
@@ -171,12 +197,14 @@ async function getLiveBuses(
         heading: parseNumberValue(item.oprDrct),
         lastUpdatedAt: parseTimestamp(item.totDt ?? item.gthrDt),
         nearStopName: parseStringValue(nearestStop?.stop.bstaNm) ?? '가까운 정류장 정보 없음',
+        stopSequence: parseNumberValue(nearestStop?.stop.sttnOrd) ?? parseNumberValue(nearestStop?.stop.stopSeq),
         etaCategory: getEtaCategory({
           walkingDistanceMeters: nearestStop?.distance ?? null,
           busDistanceMeters: busDistanceToStop,
           speedKmh: speed,
         }),
         stopDistanceMeters: nearestStop?.distance ?? 9999,
+        stopAccessStatus: getStopAccessStatus(nearestStop?.distance ?? null),
       };
     })
     .filter((item): item is BusData => item !== null);

@@ -13,6 +13,8 @@ export type ApiEnvelope<T> = {
 
 export type ServiceName = 'signals' | 'buses' | 'mobility';
 export type DataOrigin = 'live' | 'mock' | 'disabled';
+export type Persona = 'default' | 'elder' | 'guardian';
+export type PaceProfile = 'default' | 'slow';
 
 export type ServiceResult<T> = {
   items: T[];
@@ -26,6 +28,9 @@ export type SignalData = Coordinates & {
   pedestrianSignalStatusLabel: string;
   remainingSeconds: number | null;
   direction: string;
+  speedLimit: number | null;
+  laneWidth: number | null;
+  intersectionComplexity: '단순' | '주의' | '복잡';
   collectedAt: string;
   advisoryOnly: true;
 };
@@ -34,13 +39,17 @@ export type BusData = Coordinates & {
   routeId: string;
   routeNo: string;
   routeType: string;
+  routeOrigin: string | null;
+  routeTerminus: string | null;
   vehicleNo: string;
   speed: number | null;
   heading: number | null;
   lastUpdatedAt: string;
   nearStopName: string;
+  stopSequence: number | null;
   etaCategory: '여유 있음' | '주의 필요' | '촉박' | '정보 부족';
   stopDistanceMeters: number;
+  stopAccessStatus: '편함' | '보통' | '주의';
 };
 
 export type MobilityData = Coordinates & {
@@ -54,6 +63,8 @@ export type MobilityData = Coordinates & {
 
 export type SummaryData = {
   location: Coordinates;
+  persona: Persona;
+  paceProfile: PaceProfile;
   dataContext: {
     signalStdgCd: string;
     busStdgCd: string;
@@ -66,9 +77,17 @@ export type SummaryData = {
     score: number;
     label: '낮음' | '보통' | '높음';
     reason: string;
+    whyNow: string;
     confidenceLabel: '높음' | '보통' | '낮음';
     freshnessMinutes: number | null;
     factors: string[];
+    topConcerns: string[];
+    scoreBreakdown: Array<{
+      id: 'signal' | 'bus' | 'intersection' | 'walkAccess' | 'freshness';
+      label: string;
+      score: number;
+      reason: string;
+    }>;
     assistiveInsight: {
       message: string;
       reason: string;
@@ -79,6 +98,22 @@ export type SummaryData = {
   topSignal: SignalData | null;
   topBus: BusData | null;
   topMobility: MobilityData | null;
+  intersectionContext: {
+    complexity: '단순' | '주의' | '복잡';
+    speedLimit: number | null;
+    laneWidth: number | null;
+    note: string;
+  } | null;
+  walkContext: {
+    source: 'osm' | 'derived';
+    accessibilityLabel: '편함' | '보통' | '주의';
+    note: string;
+    stepsNearby: boolean;
+    shelterNearby: boolean;
+    crossingCount: number;
+    busStopCount: number;
+    signalCount: number;
+  };
   signals: SignalData[];
   buses: BusData[];
   mobilityCenters: MobilityData[];

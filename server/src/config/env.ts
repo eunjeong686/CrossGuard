@@ -18,6 +18,11 @@ function parseMode(value: string | undefined): DataMode {
 export const env = {
   port: parseNumber(process.env.PORT, 8787),
   clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
+  osm: {
+    overpassUrl: process.env.OSM_OVERPASS_URL ?? 'https://overpass-api.de/api/interpreter',
+    timeoutMs: parseNumber(process.env.OSM_TIMEOUT_MS, 2500),
+    cacheTtlMs: parseNumber(process.env.OSM_CACHE_TTL_MS, 60_000 * 30),
+  },
   publicData: {
     mode: parseMode(process.env.PUBLIC_DATA_MODE),
     serviceKey: process.env.PUBLIC_DATA_SERVICE_KEY ?? '',

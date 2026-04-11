@@ -1,5 +1,5 @@
 import { getJson } from './client';
-import type { SummaryPayload } from '../types/api';
+import type { PaceProfile, Persona, SummaryPayload } from '../types/api';
 
 type SummaryOptions = {
   signalStdgCd?: string;
@@ -8,6 +8,8 @@ type SummaryOptions = {
   includeSignals?: boolean;
   includeBuses?: boolean;
   includeMobility?: boolean;
+  persona?: Persona;
+  paceProfile?: PaceProfile;
   enabled?: boolean;
 };
 
@@ -39,6 +41,14 @@ export function fetchSummary(lat: number, lng: number, options?: SummaryOptions)
 
   if (options?.includeMobility !== undefined) {
     params.set('includeMobility', String(options.includeMobility));
+  }
+
+  if (options?.persona) {
+    params.set('persona', options.persona);
+  }
+
+  if (options?.paceProfile) {
+    params.set('paceProfile', options.paceProfile);
   }
 
   return getJson<SummaryPayload>(`/api/location/summary?${params.toString()}`);
