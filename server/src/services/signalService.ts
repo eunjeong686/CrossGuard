@@ -174,11 +174,15 @@ async function getLiveSignals(
       label: '교차로 맵 정보',
       url: `${baseUrl}/crsrd_map_info`,
       query,
+      pageSize: env.publicData.signalPageSize,
+      maxPages: env.publicData.signalMaxPages,
     }),
     fetchAllPublicApiItems<RawApiRecord>({
       label: '신호제어기 신호잔여시간 정보',
       url: `${baseUrl}/tl_drct_info`,
       query,
+      pageSize: env.publicData.signalPageSize,
+      maxPages: env.publicData.signalMaxPages,
     }),
   ]);
 

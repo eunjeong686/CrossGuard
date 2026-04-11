@@ -37,5 +37,21 @@ services:
         value: "15000"
       - key: MOBILITY_CACHE_TTL_MS
         value: "30000"
+      - key: SIGNAL_PAGE_SIZE
+        value: "200"
+      - key: SIGNAL_MAX_PAGES
+        value: "2"
+      - key: BUS_ROUTE_PAGE_SIZE
+        value: "200"
+      - key: BUS_ROUTE_MAX_PAGES
+        value: "1"
+      - key: BUS_STOP_PAGE_SIZE
+        value: "300"
+      - key: BUS_STOP_MAX_PAGES
+        value: "2"
+      - key: BUS_LIVE_PAGE_SIZE
+        value: "200"
+      - key: BUS_LIVE_MAX_PAGES
+        value: "2"
       - key: PUBLIC_DATA_SERVICE_KEY
         sync: false

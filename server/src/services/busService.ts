@@ -130,16 +130,22 @@ async function getLiveBuses(
       label: '노선 기본 정보',
       url: `${baseUrl}/mst_info`,
       query,
+      pageSize: env.publicData.busRoutePageSize,
+      maxPages: env.publicData.busRouteMaxPages,
     }),
     fetchAllPublicApiItems<RawApiRecord>({
       label: '노선 경유지 정보',
       url: `${baseUrl}/ps_info`,
       query,
+      pageSize: env.publicData.busStopPageSize,
+      maxPages: env.publicData.busStopMaxPages,
     }),
     fetchAllPublicApiItems<RawApiRecord>({
       label: '버스 실시간 위치정보',
       url: `${baseUrl}/rtm_loc_info`,
       query,
+      pageSize: env.publicData.busLivePageSize,
+      maxPages: env.publicData.busLiveMaxPages,
     }),
   ]);
 
