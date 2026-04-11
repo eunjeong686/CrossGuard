@@ -61,8 +61,8 @@ npm run dev
 
 ## 울산 데모 노출 정책
 
-- 서버는 울산 내부 샘플 좌표를 기준으로 신호+버스 동시 live 커버리지를 계산합니다.
-- 커버리지 `70% 이상`이면 `자유 위치 선택`을 열고, 미만이면 `검증된 프리셋 3곳` 중심으로 안내합니다.
+- 울산 내부 샘플 좌표를 백테스트(`scan-ulsan-coverage`)로 측정한 뒤 정책을 고정합니다.
+- 커버리지 `70% 이상`이면 `VITE_ULSAN_SELECTION_POLICY=free`, 미만이면 `preset`으로 설정합니다.
 - `hybrid` 모드에서도 캐시에 `source(live/mock)`를 함께 저장해, live/mock 불일치 표시가 생기지 않도록 처리합니다.
 
 ## 실데이터 검증 근거
@@ -168,7 +168,7 @@ node scripts/scan-live-regions.mjs --all --concurrency 2 --delay-ms 120
 node scripts/scan-ulsan-coverage.mjs --base-url=http://localhost:8787 --rounds=2 --threshold=70
 ```
 
-- 스크립트 위치: `scripts/scan-live-regions.mjs`
+- 스크립트 위치: `scripts/scan-live-regions.mjs`, `scripts/scan-ulsan-coverage.mjs`
 - 환경변수: `server/.env` 또는 환경변수의 `PUBLIC_DATA_SERVICE_KEY`, `SIGNAL_API_URL`, `BUS_API_URL`, `MOBILITY_API_URL`
 - 결과 출력: `tmp/live-region-scan-{YYYYMMDD-HHmm}.json`, `tmp/live-region-scan-{YYYYMMDD-HHmm}.md`
 - 분류: `3종 모두 가능`, `신호+버스`, `이동지원`, `부분 가능`, `응답 없음/오류`

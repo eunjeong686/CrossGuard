@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { AppShell } from '../components/layout/AppShell';
 import { SummaryMap } from '../components/map/SummaryMap';
 import { useLocation } from '../hooks/useLocation';
-import { useMetaStatus } from '../hooks/useMetaStatus';
 import { useSummary } from '../hooks/useSummary';
 import { useUiStore } from '../stores/uiStore';
 import { formatRelativeTime } from '../utils/format';
@@ -102,25 +101,6 @@ function getSupportedArea(coordinates: { lat: number; lng: number }) {
   );
 }
 
-function toRecommendedPlace(raw: {
-  id: string;
-  label: string;
-  description: string;
-  lat: number;
-  lng: number;
-}): RecommendedPlace {
-  return {
-    id: raw.id,
-    label: `${raw.label} 보기`,
-    currentLabel: raw.label,
-    description: raw.description,
-    coordinates: { lat: raw.lat, lng: raw.lng },
-    signalStdgCd: '3100000000',
-    busStdgCd: '3100000000',
-    supportedCards: ['signals', 'buses'],
-  };
-}
-
 function getServiceSourceLabel(source?: 'live' | 'mock' | 'disabled') {
   if (source === 'live') {
     return '실시간 연동';
@@ -163,14 +143,11 @@ export function HomePage() {
   const [displayRemainingSeconds, setDisplayRemainingSeconds] = useState<number | null>(null);
   const [signalCountdownState, setSignalCountdownState] = useState<SignalCountdownState>('unknown');
   const sheetDragStartY = useRef<number | null>(null);
-  const { data: metaStatus } = useMetaStatus();
   const { largeText, simpleMode, setLargeText, setSimpleMode } = useUiStore();
-  const selectionPolicy = metaStatus?.data.ulsanCoverage.selectionPolicy ?? 'preset';
-  const coverageScore = metaStatus?.data.ulsanCoverage.coverageScore ?? 0;
-  const recommendedPlaces =
-    metaStatus?.data.ulsanCoverage.recommendedPlaces.length
-      ? metaStatus.data.ulsanCoverage.recommendedPlaces.map(toRecommendedPlace).slice(0, 3)
-      : RECOMMENDED_PLACES;
+  const selectionPolicy: 'free' | 'preset' =
+    import.meta.env.VITE_ULSAN_SELECTION_POLICY === 'free' ? 'free' : 'preset';
+  const coverageScore = Number(import.meta.env.VITE_ULSAN_COVERAGE_SCORE ?? 0);
+  const recommendedPlaces = RECOMMENDED_PLACES;
   const defaultRecommendedPlace = recommendedPlaces[0] ?? RECOMMENDED_PLACES[0];
   const selectedPlace =
     recommendedPlaces.find((place) => place.id === selectedPlaceId) ?? null;
