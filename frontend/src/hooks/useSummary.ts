@@ -31,7 +31,7 @@ export function useSummary(lat: number, lng: number, options?: SummaryOptions) {
     ],
     queryFn: () => fetchSummary(lat, lng, options),
     enabled: options?.enabled ?? true,
-    staleTime: 15_000,
-    refetchInterval: options?.enabled === false ? false : 20_000,
+    staleTime: 8_000,
+    refetchInterval: options?.enabled === false ? false : 8_000,
   });
 }

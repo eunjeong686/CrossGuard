@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { RouteCompareCard } from '../components/cards/RouteCompareCard';
 import { AppShell } from '../components/layout/AppShell';
 import { SummaryMap } from '../components/map/SummaryMap';
@@ -39,10 +39,10 @@ type CompareTarget = {
 };
 
 type SheetState = 'collapsed' | 'mid' | 'expanded';
+type SignalCountdownState = 'countdown' | 'stale' | 'unknown';
 type ScenarioOption = {
   id: Persona;
   label: string;
-  subtitle: string;
   goal: string;
 };
 
@@ -85,14 +85,12 @@ const COMPARE_TARGETS: CompareTarget[] = [
 const SCENARIO_OPTIONS: ScenarioOption[] = [
   {
     id: 'elder',
-    label: '천천히 걷는 사용자',
-    subtitle: '건너기 전 신호와 정류장 접근을 더 보수적으로 봅니다.',
+    label: '천천히 걷기',
     goal: '건너기 전 신호',
   },
   {
     id: 'guardian',
-    label: '보호자와 함께 보기',
-    subtitle: '설명과 데이터 최신성을 더 자세히 보여줍니다.',
+    label: '보호자 함께 보기',
     goal: '근거와 확인 포인트',
   },
 ];
@@ -153,8 +151,11 @@ export function HomePage() {
   const [persona, setPersona] = useState<Persona>('elder');
   const [compareOpen, setCompareOpen] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
+  const [concernOpen, setConcernOpen] = useState(false);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [sheetState, setSheetState] = useState<SheetState>('mid');
+  const [displayRemainingSeconds, setDisplayRemainingSeconds] = useState<number | null>(null);
+  const [signalCountdownState, setSignalCountdownState] = useState<SignalCountdownState>('unknown');
   const sheetDragStartY = useRef<number | null>(null);
   const { largeText, simpleMode, toggleLargeText, toggleSimpleMode } = useUiStore();
   const selectedPlace =
@@ -215,17 +216,60 @@ export function HomePage() {
   const safetyReminder =
     summary?.movementBurden.assistiveInsight.safetyReminder ??
     '앱 안내는 참고용이며, 실제 현장 신호와 주변 상황을 우선 확인해 주세요.';
+
+  useEffect(() => {
+    const remainingSeconds = summary?.topSignal?.remainingSeconds;
+    const collectedAt = summary?.topSignal?.collectedAt;
+
+    if (remainingSeconds == null || !collectedAt) {
+      const fallbackTimer = window.setTimeout(() => {
+        setDisplayRemainingSeconds(null);
+        setSignalCountdownState('unknown');
+      }, 0);
+
+      return () => {
+        window.clearTimeout(fallbackTimer);
+      };
+    }
+
+    const remainingSecondsValue = remainingSeconds;
+    const collectedAtValue = collectedAt;
+
+    function updateCountdown() {
+      const elapsedSeconds = Math.max(
+        0,
+        Math.floor((Date.now() - new Date(collectedAtValue).getTime()) / 1000),
+      );
+      const nextRemaining = Math.max(0, remainingSecondsValue - elapsedSeconds);
+
+      setDisplayRemainingSeconds(nextRemaining);
+      setSignalCountdownState(nextRemaining > 0 ? 'countdown' : 'stale');
+    }
+
+    const initialTimer = window.setTimeout(updateCountdown, 0);
+    const timer = window.setInterval(updateCountdown, 1000);
+
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(timer);
+    };
+  }, [summary?.topSignal?.remainingSeconds, summary?.topSignal?.collectedAt]);
+
+  const signalCountdownLabel =
+    signalCountdownState === 'countdown'
+      ? `${displayRemainingSeconds ?? 0}초 남음`
+      : signalCountdownState === 'stale'
+        ? '다시 확인 중'
+        : (summary?.topSignal?.pedestrianSignalStatusLabel ?? '확인 필요');
+
   const nearbyRows = summary
     ? [
         visibleCards.includes('signals')
           ? {
               id: 'signals',
               label: '가까운 신호',
-              title: summary.topSignal?.intersectionName ?? '가까운 신호 정보 없음',
-              value:
-                summary.topSignal?.remainingSeconds != null
-                  ? `${summary.topSignal.remainingSeconds}초 남음 · ${summary.topSignal.intersectionComplexity}`
-                  : (summary.topSignal?.pedestrianSignalStatusLabel ?? '확인 필요'),
+              title: summary.topSignal?.intersectionName ?? '도착 전 신호 확인',
+              value: signalCountdownLabel,
             }
           : null,
         visibleCards.includes('buses')
@@ -233,7 +277,7 @@ export function HomePage() {
               id: 'buses',
               label: '버스 여유',
               title: summary.topBus
-                ? `${summary.topBus.routeType} ${summary.topBus.routeNo}번 · ${summary.topBus.routeTerminus ?? '종점 확인 중'}`
+                ? `${summary.topBus.routeNo}번`
                 : '가까운 버스 정보 없음',
               value: summary.topBus?.etaCategory ?? '확인 필요',
             }
@@ -245,15 +289,15 @@ export function HomePage() {
               title: summary.topBus?.nearStopName ?? '가까운 정류장 정보 없음',
               value:
                 summary.topBus?.stopDistanceMeters != null
-                  ? `약 ${Math.round(summary.topBus.stopDistanceMeters)}m · 접근 ${summary.topBus.stopAccessStatus}`
+                  ? `약 ${Math.round(summary.topBus.stopDistanceMeters)}m`
                   : '확인 필요',
             }
           : null,
         {
           id: 'walk-access',
           label: '보행 접근',
-          title: summary.walkContext.note,
-          value: summary.walkContext.accessibilityLabel,
+          title: summary.walkContext.accessibilityLabel,
+          value: summary.walkContext.stepsNearby ? '계단 가능성 있음' : '계단 정보 없음',
         },
       ].filter((row) => row != null)
     : [];
@@ -261,10 +305,7 @@ export function HomePage() {
     ? [
         {
           label: '신호 참고',
-          value:
-            summary.topSignal?.remainingSeconds != null
-              ? `${summary.topSignal.remainingSeconds}초 남음`
-              : (summary.topSignal?.pedestrianSignalStatusLabel ?? '확인 필요'),
+          value: signalCountdownLabel,
         },
         {
           label: '버스 여유',
@@ -287,7 +328,7 @@ export function HomePage() {
     sheetDragStartY.current = null;
 
     if (startY === null) {
-      return;
+      return undefined;
     }
 
     const deltaY = event.clientY - startY;
@@ -340,9 +381,14 @@ export function HomePage() {
                 <span>{isFetching ? '정보 확인 중' : '걷기 전 확인'}</span>
                 <strong>{placeLabel}</strong>
               </div>
-              <button className="mini-map-button" onClick={handleCurrentLocation} type="button">
-                내 위치
-              </button>
+              <div className="top-location-actions">
+                <button className="mini-map-button" onClick={() => setEvidenceOpen((open) => !open)} type="button">
+                  정보
+                </button>
+                <button className="mini-map-button" onClick={handleCurrentLocation} type="button">
+                  내 위치
+                </button>
+              </div>
             </div>
 
             <SummaryMap
@@ -415,23 +461,6 @@ export function HomePage() {
 
             {summary ? (
               <>
-                <div className="service-identity-card">
-                  <div className="identity-pill-row">
-                    <span>교통약자 출발 전 판단 보조</span>
-                    <span>길찾기보다 지금 판단</span>
-                  </div>
-                  <h2>길찾기 앱이 아니라, 지금 출발해도 덜 불안한지 먼저 봐요</h2>
-                  <p>
-                    신호와 버스 실시간 정보를 교통약자 관점으로 다시 읽어, 건너기 전 신호와
-                    버스 탈 여유, 정류장 접근 부담을 먼저 보여줍니다.
-                  </p>
-                  <div className="value-chip-row">
-                    <span>건너기 전 신호</span>
-                    <span>버스 탈 여유</span>
-                    <span>정류장 접근 부담</span>
-                  </div>
-                </div>
-
                 <div className="scenario-selector">
                   {SCENARIO_OPTIONS.map((option) => (
                     <button
@@ -440,8 +469,7 @@ export function HomePage() {
                       onClick={() => setPersona(option.id)}
                       type="button"
                     >
-                      <strong>{option.label}</strong>
-                      <span>{option.subtitle}</span>
+                      {option.label}
                     </button>
                   ))}
                 </div>
@@ -450,13 +478,12 @@ export function HomePage() {
                   <div>
                     <span>{selectedScenario.goal}</span>
                     <h1>{summaryMessage}</h1>
-                    <p>{summary.movementBurden.whyNow}</p>
-                    {summaryReason ? <em className="assistive-reason">{summaryReason}</em> : null}
+                    <p>{summaryReason ?? summary.movementBurden.whyNow}</p>
                   </div>
                   <div className="score-cluster">
                     <div className="sheet-score-pill">
                       <strong>{summary.movementBurden.score}점</strong>
-                      <span>참고 지표</span>
+                      <span>신호·버스·거리 기준</span>
                     </div>
                     <button
                       className="score-help-button"
@@ -470,12 +497,13 @@ export function HomePage() {
 
                 {scoreOpen ? (
                   <div className="score-help-panel">
-                    <p>
-                      신호 잔여시간, 버스 여유, 교차로 복잡도, 정류장 접근 부담, 데이터 최신성을
-                      합친 참고 지표입니다.
-                    </p>
+                    <p>신호, 버스, 정류장 접근을 중심으로 참고 점수를 보여줍니다.</p>
                     <div className="score-breakdown-list">
-                      {summary.movementBurden.scoreBreakdown.map((item) => (
+                      {summary.movementBurden.scoreBreakdown
+                        .filter((item) =>
+                          ['signal', 'bus', 'walkAccess'].includes(item.id),
+                        )
+                        .map((item) => (
                         <article key={item.id}>
                           <div>
                             <strong>{item.label}</strong>
@@ -483,7 +511,7 @@ export function HomePage() {
                           </div>
                           <p>{item.reason}</p>
                         </article>
-                      ))}
+                        ))}
                     </div>
                   </div>
                 ) : null}
@@ -516,11 +544,6 @@ export function HomePage() {
                 </div>
 
                 {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
-
-                <div className="why-different-card">
-                  <strong>왜 다른가</strong>
-                  <p>일반 지도앱이 길과 도착을 보여준다면, SafeCross는 출발 직전의 부담 판단을 먼저 돕습니다.</p>
-                </div>
 
                 {simpleMode ? (
                   <div className="simple-sheet-note">
@@ -589,63 +612,40 @@ export function HomePage() {
                   </div>
                 ) : null}
 
-                <div className="concern-card">
-                  <strong>왜 이렇게 안내하나요?</strong>
-                  <p>{summary.movementBurden.whyNow}</p>
-                  <div className="concern-list">
-                    {summary.movementBurden.topConcerns.length > 0 ? (
-                      summary.movementBurden.topConcerns.map((concern) => <span key={concern}>{concern}</span>)
-                    ) : (
-                      <span>현재는 과도한 주의 요소보다 현장 확인을 함께 권장하는 상태입니다.</span>
-                    )}
-                  </div>
-                  <em>{safetyReminder}</em>
-                </div>
-
-                <div className="scenario-card-grid">
-                  <article>
-                    <strong>천천히 걸어 버스를 타러 갈 때</strong>
-                    <p>신호가 곧 바뀌는지와 정류장까지 접근 부담을 같이 보고 서두를 필요가 있는지 확인합니다.</p>
-                  </article>
-                  <article>
-                    <strong>보호자가 함께 확인할 때</strong>
-                    <p>데이터 최신성과 주의 포인트를 더 자세히 보고 출발 전에 같이 판단할 수 있습니다.</p>
-                  </article>
-                </div>
-
-                <div className="evidence-card">
+                <div className="concern-drawer">
                   <button
                     className="compare-toggle"
-                    onClick={() => setEvidenceOpen((open) => !open)}
+                    onClick={() => setConcernOpen((open) => !open)}
                     type="button"
                   >
-                    <span>데이터 근거 보기</span>
-                    <strong>{evidenceOpen ? '닫기' : '보기'}</strong>
+                    <span>왜 이렇게 안내하나요?</span>
+                    <strong>{concernOpen ? '닫기' : '보기'}</strong>
                   </button>
 
-                  {evidenceOpen ? (
-                    <div className="evidence-card-body">
-                      <div className="evidence-grid">
-                        <article>
-                          <strong>신호 데이터</strong>
-                          <p>{getServiceSourceLabel(summary.dataContext.serviceSources.signals)} · 교차로 기본 정보와 잔여시간을 함께 봅니다.</p>
-                        </article>
-                        <article>
-                          <strong>버스 데이터</strong>
-                          <p>{getServiceSourceLabel(summary.dataContext.serviceSources.buses)} · 노선, 종점, 가까운 정류장 맥락을 함께 봅니다.</p>
-                        </article>
-                        <article>
-                          <strong>보행 맥락</strong>
-                          <p>{summary.walkContext.source === 'osm' ? 'OpenStreetMap 기반' : '기본 추정치'} · 횡단보도, 계단, 정류장 접근 단서를 함께 봅니다.</p>
-                        </article>
+                  {concernOpen ? (
+                    <div className="concern-panel">
+                      <div className="concern-list">
+                        {summary.movementBurden.topConcerns.length > 0 ? (
+                          summary.movementBurden.topConcerns.map((concern) => <span key={concern}>{concern}</span>)
+                        ) : (
+                          <span>과도한 주의 요소보다는 현장 확인을 함께 권장하는 상태입니다.</span>
+                        )}
                       </div>
-                      <p className="evidence-note">
-                        울산은 신호와 버스 실데이터가 함께 안정적으로 검증된 지역이라 기본 기준
-                        위치로 사용합니다.
-                      </p>
+                      <p className="concern-note">{safetyReminder}</p>
                     </div>
                   ) : null}
                 </div>
+
+                {evidenceOpen ? (
+                  <div className="evidence-inline-panel">
+                    <p>
+                      신호 {getServiceSourceLabel(summary.dataContext.serviceSources.signals)} · 버스{' '}
+                      {getServiceSourceLabel(summary.dataContext.serviceSources.buses)} · 보행 맥락{' '}
+                      {summary.walkContext.source === 'osm' ? 'OpenStreetMap' : '기본 추정치'}
+                    </p>
+                    <p>울산은 신호와 버스 실데이터가 함께 안정적으로 확인된 기준 위치입니다.</p>
+                  </div>
+                ) : null}
 
                 <div className="sheet-footnote">
                   <span>마지막 확인 {formatRelativeTime(summary.lastUpdatedAt)}</span>
