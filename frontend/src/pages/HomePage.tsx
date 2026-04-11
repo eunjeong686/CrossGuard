@@ -169,8 +169,6 @@ export function HomePage() {
       ? 'live'
       : 'limited';
   const canPickLocation = isSupportedArea && dataReliability === 'live';
-  const signalIsLive = summary?.dataContext.serviceSources.signals === 'live';
-  const busIsLive = summary?.dataContext.serviceSources.buses === 'live';
 
   useEffect(() => {
     const remainingSeconds = summary?.topSignal?.remainingSeconds;
@@ -223,9 +221,7 @@ export function HomePage() {
           ? {
               id: 'signals',
               label: '가까운 신호',
-              title: signalIsLive
-                ? (summary.topSignal?.intersectionName ?? '도착 전 신호 확인')
-                : '가까운 횡단보도',
+              title: summary.topSignal?.intersectionName ?? '도착 전 신호 확인',
               value: signalCountdownLabel,
             }
           : null,
@@ -234,7 +230,7 @@ export function HomePage() {
               id: 'buses',
               label: '버스 여유',
               title: summary.topBus
-                ? (busIsLive ? `${summary.topBus.routeNo}번` : '가까운 버스')
+                ? `${summary.topBus.routeNo}번`
                 : '가까운 버스 정보 없음',
               value: summary.topBus?.etaCategory ?? '확인 필요',
             }
@@ -243,9 +239,7 @@ export function HomePage() {
           ? {
               id: 'bus-distance',
               label: '정류장까지',
-              title: busIsLive
-                ? (summary.topBus?.nearStopName ?? '가까운 정류장 정보 없음')
-                : '가까운 정류장',
+              title: summary.topBus?.nearStopName ?? '가까운 정류장 정보 없음',
               value:
                 summary.topBus?.stopDistanceMeters != null
                   ? `약 ${Math.round(summary.topBus.stopDistanceMeters)}m`

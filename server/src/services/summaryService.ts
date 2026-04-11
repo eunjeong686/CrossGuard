@@ -111,14 +111,6 @@ function getScopeLabel(enabledServices: SummaryScope['enabledServices']) {
   return enabledServices.map((service) => SERVICE_LABELS[service]).join('·');
 }
 
-function getBusLabel(routeNo: string | null | undefined) {
-  if (!routeNo) {
-    return '가까운 버스';
-  }
-
-  return routeNo.endsWith('버스') ? routeNo : `${routeNo}번 버스`;
-}
-
 function haversineMeters(origin: Coordinates, target: Coordinates) {
   const toRadians = (value: number) => (value * Math.PI) / 180;
   const earthRadius = 6_371_000;
@@ -214,29 +206,26 @@ function getMovementBurden(
   score: number,
   enabledServices: SummaryScope['enabledServices'],
   freshnessMinutes: number | null,
-  serviceSources: SummaryData['dataContext']['serviceSources'],
 ) {
   const scopeLabel = getScopeLabel(enabledServices);
-  const allLive = enabledServices.every((service) => serviceSources[service] === 'live');
-  const sourceLabel = allLive ? `${scopeLabel} 실시간 정보` : `${scopeLabel} 참고 정보`;
 
   if (score >= 80) {
     return {
       label: '낮음' as const,
-      reason: `${sourceLabel}를 함께 보고 현재 이동 부담이 비교적 낮게 보입니다.`,
+      reason: `${scopeLabel} 실데이터를 기준으로 현재 이동 부담이 비교적 낮게 보입니다.`,
     };
   }
 
   if (score >= 50) {
     return {
       label: '보통' as const,
-      reason: `${sourceLabel} 중 일부만 여유가 확인되어 현장 판단을 함께 권장합니다.`,
+      reason: `${scopeLabel} 실데이터 중 일부만 여유가 확인되어 현장 판단을 함께 권장합니다.`,
     };
   }
 
   return {
     label: '높음' as const,
-    reason: `${sourceLabel}만으로는 여유를 확인하기 어려워 보수적으로 판단했습니다.`,
+    reason: `${scopeLabel} 실데이터만으로는 여유를 확인하기 어려워 보수적으로 판단했습니다.`,
   };
 }
 
@@ -313,7 +302,7 @@ function getAssistiveInsight({
   if (hasBus && topBus.etaCategory === '촉박') {
     return {
       message: '버스보다 다음 선택지를 같이 보는 편이 좋아요.',
-      reason: `${getBusLabel(topBus.routeNo)} 상태가 촉박하게 분류되어 이동 여유를 낮게 반영했습니다.`,
+      reason: `${topBus.routeNo}번 버스 상태가 촉박하게 분류되어 이동 여유를 낮게 반영했습니다.`,
       safetyReminder: '버스를 서두르기보다 현장 이동 여건을 먼저 확인해 주세요.',
       engine: 'local-rules',
     };
@@ -424,11 +413,7 @@ export async function getLocationSummary(
             weightedScores.reduce((sum, item) => sum + item.weight, 0),
         )
       : 50;
-  const movementBurden = getMovementBurden(score, scope.enabledServices, freshnessMinutes, {
-    signals: signals.source,
-    buses: buses.source,
-    mobility: mobilityCenters.source,
-  });
+  const movementBurden = getMovementBurden(score, scope.enabledServices, freshnessMinutes);
   const assistiveInsight = getAssistiveInsight({
     movementLabel: movementBurden.label,
     topSignal,
@@ -452,7 +437,7 @@ export async function getLocationSummary(
       label: '버스 여유',
       score: busScore ?? 50,
       reason: topBus
-        ? `${getBusLabel(topBus.routeNo)}의 ${topBus.etaCategory} 상태를 반영했습니다.`
+        ? `${topBus.routeNo}번의 ${topBus.etaCategory} 상태를 반영했습니다.`
         : '주변 버스 정보가 부족해 기본값으로 반영했습니다.',
     },
     {
