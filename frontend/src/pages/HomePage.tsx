@@ -31,10 +31,11 @@ type SupportedArea = {
 
 type SheetState = 'collapsed' | 'mid' | 'expanded';
 type SignalCountdownState = 'countdown' | 'stale' | 'unknown';
-type ScenarioOption = {
-  id: Persona;
+type ViewMode = 'default' | 'accessible';
+
+type ModeOption = {
+  id: ViewMode;
   label: string;
-  goal: string;
 };
 
 const RECOMMENDED_PLACES: RecommendedPlace[] = [
@@ -58,16 +59,14 @@ const SUPPORTED_AREAS: SupportedArea[] = [
   },
 ];
 
-const SCENARIO_OPTIONS: ScenarioOption[] = [
+const MODE_OPTIONS: ModeOption[] = [
   {
-    id: 'elder',
-    label: '혼자 보기',
-    goal: '건너기 전 신호',
+    id: 'default',
+    label: '기본 보기',
   },
   {
-    id: 'guardian',
-    label: '보호자 함께 보기',
-    goal: '근거와 확인 포인트',
+    id: 'accessible',
+    label: '접근성 보기',
   },
 ];
 
@@ -122,7 +121,6 @@ export function HomePage() {
     requestCurrentLocation,
   } = useLocation();
   const [selectedPlaceId, setSelectedPlaceId] = useState<RecommendedPlace['id'] | null>(null);
-  const [persona, setPersona] = useState<Persona>('elder');
   const [scoreOpen, setScoreOpen] = useState(false);
   const [concernOpen, setConcernOpen] = useState(false);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
@@ -130,7 +128,7 @@ export function HomePage() {
   const [displayRemainingSeconds, setDisplayRemainingSeconds] = useState<number | null>(null);
   const [signalCountdownState, setSignalCountdownState] = useState<SignalCountdownState>('unknown');
   const sheetDragStartY = useRef<number | null>(null);
-  const { largeText, simpleMode, toggleLargeText, toggleSimpleMode } = useUiStore();
+  const { largeText, simpleMode, setLargeText, setSimpleMode } = useUiStore();
   const selectedPlace =
     RECOMMENDED_PLACES.find((place) => place.id === selectedPlaceId) ?? null;
   const activeCoordinates = selectedPlace?.coordinates ?? coordinates;
@@ -138,7 +136,9 @@ export function HomePage() {
   const activePlaceProfile = selectedPlace ?? (supportedArea ? getPlaceProfileById(supportedArea.id) : null);
   const isSupportedArea = Boolean(activePlaceProfile);
   const visibleCards = activePlaceProfile?.supportedCards ?? [];
-  const paceProfile: PaceProfile = persona === 'elder' ? 'slow' : 'default';
+  const viewMode: ViewMode = largeText || simpleMode ? 'accessible' : 'default';
+  const paceProfile: PaceProfile = viewMode === 'accessible' ? 'slow' : 'default';
+  const persona: Persona = viewMode === 'accessible' ? 'elder' : 'default';
   const summaryOptions = {
     signalStdgCd: activePlaceProfile?.signalStdgCd,
     busStdgCd: activePlaceProfile?.busStdgCd,
@@ -156,8 +156,6 @@ export function HomePage() {
     summaryOptions,
   );
   const summary = data?.data;
-  const selectedScenario =
-    SCENARIO_OPTIONS.find((option) => option.id === persona) ?? SCENARIO_OPTIONS[0];
   const placeLabel = selectedPlace?.label ?? activePlaceProfile?.currentLabel ?? locationLabel;
   const summaryMessage =
     summary?.movementBurden.assistiveInsight.message ?? '신호와 이동수단을 함께 확인해 주세요.';
@@ -165,6 +163,12 @@ export function HomePage() {
   const safetyReminder =
     summary?.movementBurden.assistiveInsight.safetyReminder ??
     '앱 안내는 참고용이며, 실제 현장 신호와 주변 상황을 우선 확인해 주세요.';
+  const dataReliability: 'live' | 'limited' =
+    summary?.dataContext.serviceSources.signals === 'live' &&
+    summary?.dataContext.serviceSources.buses === 'live'
+      ? 'live'
+      : 'limited';
+  const canPickLocation = isSupportedArea && dataReliability === 'live';
 
   useEffect(() => {
     const remainingSeconds = summary?.topSignal?.remainingSeconds;
@@ -266,7 +270,6 @@ export function HomePage() {
         },
       ]
     : [];
-  const viewMode: 'solo' | 'guardian' = persona === 'guardian' ? 'guardian' : 'solo';
   const topBusEta = summary?.topBus?.etaCategory ?? '버스 상태 확인';
   const busDistanceLabel =
     nearbyRows.find((row) => row.id === 'bus-distance')?.value ?? '거리 확인';
@@ -291,7 +294,7 @@ export function HomePage() {
             description: '정류장까지 거리가 아주 멀지 않아 버스 상태와 신호를 함께 보며 이동하기 좋은 편입니다.',
             support: [topBusEta, busDistanceLabel],
           };
-  const guardianChecks = [
+  const accessibilityChecks = [
     signalCountdownState !== 'countdown'
       ? '신호가 곧 바뀔 수 있어 현장 신호를 다시 확인해 주세요.'
       : `가까운 신호는 ${signalCountdownLabel} 기준입니다.`,
@@ -300,7 +303,13 @@ export function HomePage() {
       : '정류장 접근 거리를 먼저 확인해 주세요.',
     '앱보다 실제 현장 신호와 차량 흐름을 우선해 주세요.',
   ];
-  const soloHighlights = nearbyRows.slice(0, 4);
+  const accessibleRows = nearbyRows.slice(0, 3);
+
+  function handleViewModeChange(nextMode: ViewMode) {
+    const accessible = nextMode === 'accessible';
+    setLargeText(accessible);
+    setSimpleMode(accessible);
+  }
 
   function handleSheetPointerDown(event: PointerEvent<HTMLButtonElement>) {
     sheetDragStartY.current = event.clientY;
@@ -337,27 +346,33 @@ export function HomePage() {
   function chooseRecommendedPlace(place: RecommendedPlace) {
     setSelectedPlaceId(place.id);
     setManualLocation(place.coordinates);
-    setConcernOpen(viewMode === 'guardian');
+    setConcernOpen(viewMode === 'accessible');
     setSheetState('mid');
   }
 
   function handleManualSelect(next: { lat: number; lng: number }) {
     setSelectedPlaceId(null);
     setManualLocation(next);
-    setConcernOpen(viewMode === 'guardian');
+    setConcernOpen(viewMode === 'accessible');
     setSheetState('mid');
   }
 
   function handleCurrentLocation() {
     setSelectedPlaceId(null);
     requestCurrentLocation();
-    setConcernOpen(viewMode === 'guardian');
+    setConcernOpen(viewMode === 'accessible');
     setSheetState('mid');
   }
 
   useEffect(() => {
-    setConcernOpen(viewMode === 'guardian');
+    setConcernOpen(viewMode === 'accessible');
   }, [viewMode]);
+
+  useEffect(() => {
+    if (!canPickLocation && selectionMode) {
+      setSelectionMode(false);
+    }
+  }, [canPickLocation, selectionMode, setSelectionMode]);
 
   return (
     <AppShell largeText={largeText}>
@@ -374,7 +389,7 @@ export function HomePage() {
                   정보
                 </button>
                 <button className="mini-map-button" onClick={handleCurrentLocation} type="button">
-                  내 위치
+                  {dataReliability === 'live' ? '내 위치' : '기준 위치'}
                 </button>
               </div>
             </div>
@@ -382,7 +397,7 @@ export function HomePage() {
             <SummaryMap
               coordinates={activeCoordinates}
               onManualSelect={handleManualSelect}
-              selectionMode={selectionMode}
+              selectionMode={canPickLocation && selectionMode}
               summary={summary}
             />
           </div>
@@ -418,15 +433,13 @@ export function HomePage() {
                       {place.label}
                     </button>
                   ))}
-                  <button
-                    className="secondary-button"
-                    onClick={() => setSelectionMode(!selectionMode)}
-                    type="button"
-                  >
-                    {selectionMode ? '위치 선택 중' : '지도에서 고르기'}
-                  </button>
                 </div>
                 {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
+                {dataReliability === 'limited' ? (
+                  <div className="inline-notice">
+                    지금은 검증된 기준 위치 정보를 우선 보여주고 있어요.
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -450,11 +463,11 @@ export function HomePage() {
             {summary ? (
               <>
                 <div className="scenario-selector">
-                  {SCENARIO_OPTIONS.map((option) => (
+                  {MODE_OPTIONS.map((option) => (
                     <button
-                      className={persona === option.id ? 'active' : ''}
+                      className={viewMode === option.id ? 'active' : ''}
                       key={option.id}
-                      onClick={() => setPersona(option.id)}
+                      onClick={() => handleViewModeChange(option.id)}
                       type="button"
                     >
                       {option.label}
@@ -464,9 +477,13 @@ export function HomePage() {
 
                 <div className="sheet-summary">
                   <div>
-                    <span>{selectedScenario.goal}</span>
+                    <span>{viewMode === 'accessible' ? '확인 포인트 우선' : '건너기 전 신호'}</span>
                     <h1>{summaryMessage}</h1>
-                    <p>{viewMode === 'guardian' ? summary.movementBurden.whyNow : summaryReason ?? summary.movementBurden.whyNow}</p>
+                    <p>
+                      {viewMode === 'accessible'
+                        ? summary.movementBurden.whyNow
+                        : summaryReason ?? summary.movementBurden.whyNow}
+                    </p>
                   </div>
                   <div className="score-cluster">
                     <div className="sheet-score-pill">
@@ -506,30 +523,31 @@ export function HomePage() {
 
                 <div className="sheet-action-grid">
                   <button className="primary-button" onClick={handleCurrentLocation} type="button">
-                    내 위치로 보기
+                    {dataReliability === 'live' ? '현재 위치 다시 확인' : '기준 위치 다시 확인'}
                   </button>
                   <button
-                    className="secondary-button"
-                    onClick={() => setSelectionMode(!selectionMode)}
+                    className={`secondary-button${canPickLocation ? '' : ' disabled'}`}
+                    disabled={!canPickLocation}
+                    onClick={() => canPickLocation && setSelectionMode(!selectionMode)}
                     type="button"
                   >
-                    {selectionMode ? '선택 마치기' : '지도에서 고르기'}
+                    {canPickLocation ? (selectionMode ? '선택 마치기' : '지도에서 고르기') : '위치 선택 제한'}
                   </button>
                   <button
-                    className={`chip-button${largeText ? ' active' : ''}`}
-                    onClick={toggleLargeText}
+                    className={`chip-button${viewMode === 'accessible' ? ' active' : ''}`}
+                    onClick={() => handleViewModeChange(viewMode === 'accessible' ? 'default' : 'accessible')}
                     type="button"
                   >
-                    글자 크게
-                  </button>
-                  <button
-                    className={`chip-button${simpleMode ? ' active' : ''}`}
-                    onClick={toggleSimpleMode}
-                    type="button"
-                  >
-                    간단히
+                    {viewMode === 'accessible' ? '기본 보기' : '접근성 보기'}
                   </button>
                 </div>
+
+                {dataReliability === 'limited' ? (
+                  <div className="inline-notice">
+                    지금은 검증된 기준 위치 정보를 우선 보여주고 있어요. 위치별 비교는 실시간 연동이
+                    안정적일 때 다시 열립니다.
+                  </div>
+                ) : null}
 
                 {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
 
@@ -544,11 +562,11 @@ export function HomePage() {
                   </div>
                 </section>
 
-                {viewMode === 'guardian' ? (
-                  <section className="guardian-check-card" aria-label="함께 다시 확인할 것">
-                    <span className="guardian-check-label">함께 다시 확인할 것</span>
+                {viewMode === 'accessible' ? (
+                  <section className="guardian-check-card" aria-label="접근성 보기 확인 포인트">
+                    <span className="guardian-check-label">먼저 확인할 것</span>
                     <div className="guardian-check-list">
-                      {guardianChecks.map((item) => (
+                      {accessibilityChecks.map((item) => (
                         <p key={item}>{item}</p>
                       ))}
                     </div>
@@ -569,7 +587,7 @@ export function HomePage() {
                   </div>
                 ) : (
                   <div className="nearby-list">
-                    {(viewMode === 'solo' ? soloHighlights : nearbyRows).map((row) => (
+                    {(viewMode === 'accessible' ? accessibleRows : nearbyRows).map((row) => (
                       <article className="nearby-row" key={row.id}>
                         <span>{row.label}</span>
                         <strong>{row.title}</strong>
@@ -591,7 +609,7 @@ export function HomePage() {
 
                   {concernOpen ? (
                     <div className="concern-panel">
-                      {viewMode === 'guardian' ? <strong>판단 이유와 확인 포인트</strong> : null}
+                      {viewMode === 'accessible' ? <strong>판단 이유와 확인 포인트</strong> : null}
                       <div className="concern-list">
                         {summary.movementBurden.topConcerns.length > 0 ? (
                           summary.movementBurden.topConcerns.map((concern) => <span key={concern}>{concern}</span>)
@@ -606,12 +624,12 @@ export function HomePage() {
 
                 {evidenceOpen ? (
                   <div className="evidence-inline-panel">
+                    <p>{dataReliability === 'live' ? '실시간 연동 중' : '기준 위치 안내 중'}</p>
                     <p>
                       신호 {getServiceSourceLabel(summary.dataContext.serviceSources.signals)} · 버스{' '}
                       {getServiceSourceLabel(summary.dataContext.serviceSources.buses)} · 보행 맥락{' '}
                       {summary.walkContext.source === 'osm' ? 'OpenStreetMap' : '기본 추정치'}
                     </p>
-                    <p>울산은 신호와 버스 실데이터가 함께 안정적으로 확인된 기준 위치입니다.</p>
                   </div>
                 ) : null}
 

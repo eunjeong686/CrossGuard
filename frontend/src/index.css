@@ -350,12 +350,18 @@ a {
   justify-content: space-between;
   gap: 16px;
   padding: 8px 4px 2px;
+  text-align: left;
 }
 
 .sheet-summary span {
   color: var(--green);
   font-size: 0.92rem;
   font-weight: 900;
+}
+
+.sheet-summary > div:first-child {
+  min-width: 0;
+  max-width: 28rem;
 }
 
 .sheet-summary h1 {
@@ -504,6 +510,21 @@ a {
   background: var(--blue-soft);
   border-color: rgba(47, 111, 143, 0.2);
   color: #1f5b78;
+}
+
+.secondary-button.disabled,
+.secondary-button:disabled {
+  background: #f3f6f8;
+  border-color: rgba(102, 112, 133, 0.14);
+  color: #8a94a6;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.secondary-button.disabled:hover,
+.secondary-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .chip-button {
@@ -709,6 +730,7 @@ a {
   background: #fbfcfa;
   display: grid;
   gap: 10px;
+  text-align: left;
 }
 
 .concern-note,
@@ -776,13 +798,13 @@ a {
 
 .priority-card,
 .guardian-check-card {
-  padding: 18px 16px;
+  padding: 16px 16px 15px;
   border-radius: 24px;
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 247, 0.96));
   display: grid;
-  gap: 12px;
-  text-align: center;
+  gap: 10px;
+  text-align: left;
 }
 
 .priority-card-label,
@@ -797,19 +819,21 @@ a {
   margin: 0;
   color: var(--text);
   font-size: clamp(1.24rem, 3.4vw, 1.58rem);
-  line-height: 1.28;
+  line-height: 1.22;
   letter-spacing: -0.03em;
+  max-width: 18ch;
 }
 
 .priority-card p,
 .guardian-check-card p {
   margin: 0;
   color: var(--muted);
+  line-height: 1.52;
 }
 
 .priority-support-grid {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -825,10 +849,6 @@ a {
   color: var(--green-deep);
   font-size: 0.82rem;
   font-weight: 900;
-}
-
-.guardian-check-card {
-  text-align: left;
 }
 
 .guardian-check-list {
@@ -983,6 +1003,10 @@ a {
 
   .sheet-summary h1 {
     font-size: 1.26rem;
+  }
+
+  .sheet-summary > div:first-child {
+    max-width: none;
   }
 
   .score-cluster {
