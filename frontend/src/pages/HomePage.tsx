@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { RouteCompareCard } from '../components/cards/RouteCompareCard';
 import { AppShell } from '../components/layout/AppShell';
 import { SummaryMap } from '../components/map/SummaryMap';
 import { useLocation } from '../hooks/useLocation';
-import { useRouteCompare } from '../hooks/useRouteCompare';
 import { useSummary } from '../hooks/useSummary';
 import { useUiStore } from '../stores/uiStore';
 import { formatRelativeTime } from '../utils/format';
@@ -29,13 +27,6 @@ type SupportedArea = {
     minLng: number;
     maxLng: number;
   };
-};
-
-type CompareTarget = {
-  id: 'bus-stop' | 'safe-crossing';
-  label: string;
-  description: string;
-  offset: { lat: number; lng: number };
 };
 
 type SheetState = 'collapsed' | 'mid' | 'expanded';
@@ -67,25 +58,10 @@ const SUPPORTED_AREAS: SupportedArea[] = [
   },
 ];
 
-const COMPARE_TARGETS: CompareTarget[] = [
-  {
-    id: 'bus-stop',
-    label: '버스 쪽으로 가기',
-    description: '버스를 탈지, 다른 이동 수단을 볼지 비교합니다.',
-    offset: { lat: 0.0012, lng: -0.0008 },
-  },
-  {
-    id: 'safe-crossing',
-    label: '조금 더 편한 길 보기',
-    description: '걷는 거리와 신호를 함께 보고 비교합니다.',
-    offset: { lat: 0.0006, lng: 0.0012 },
-  },
-];
-
 const SCENARIO_OPTIONS: ScenarioOption[] = [
   {
     id: 'elder',
-    label: '천천히 걷기',
+    label: '혼자 보기',
     goal: '건너기 전 신호',
   },
   {
@@ -146,10 +122,7 @@ export function HomePage() {
     requestCurrentLocation,
   } = useLocation();
   const [selectedPlaceId, setSelectedPlaceId] = useState<RecommendedPlace['id'] | null>(null);
-  const [selectedCompareTargetId, setSelectedCompareTargetId] =
-    useState<CompareTarget['id']>('bus-stop');
   const [persona, setPersona] = useState<Persona>('elder');
-  const [compareOpen, setCompareOpen] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
   const [concernOpen, setConcernOpen] = useState(false);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
@@ -183,30 +156,6 @@ export function HomePage() {
     summaryOptions,
   );
   const summary = data?.data;
-  const selectedCompareTarget =
-    COMPARE_TARGETS.find((target) => target.id === selectedCompareTargetId) ?? COMPARE_TARGETS[0];
-  const compareDestination = {
-    lat: activeCoordinates.lat + selectedCompareTarget.offset.lat,
-    lng: activeCoordinates.lng + selectedCompareTarget.offset.lng,
-  };
-  const compareOptions = {
-    signalStdgCd: activePlaceProfile?.signalStdgCd,
-    busStdgCd: activePlaceProfile?.busStdgCd,
-    mobilityStdgCd: activePlaceProfile?.mobilityStdgCd,
-    enabled: isSupportedArea,
-  };
-  const {
-    data: compareData,
-    isLoading: isCompareLoading,
-    isError: isCompareError,
-  } = useRouteCompare(
-    activeCoordinates.lat,
-    activeCoordinates.lng,
-    compareDestination.lat,
-    compareDestination.lng,
-    compareOptions,
-  );
-  const compare = compareData?.data;
   const selectedScenario =
     SCENARIO_OPTIONS.find((option) => option.id === persona) ?? SCENARIO_OPTIONS[0];
   const placeLabel = selectedPlace?.label ?? activePlaceProfile?.currentLabel ?? locationLabel;
@@ -317,6 +266,41 @@ export function HomePage() {
         },
       ]
     : [];
+  const viewMode: 'solo' | 'guardian' = persona === 'guardian' ? 'guardian' : 'solo';
+  const topBusEta = summary?.topBus?.etaCategory ?? '버스 상태 확인';
+  const busDistanceLabel =
+    nearbyRows.find((row) => row.id === 'bus-distance')?.value ?? '거리 확인';
+  const primaryFocus =
+    signalCountdownState === 'stale' || signalCountdownState === 'unknown'
+      ? {
+          label: '먼저 확인할 것',
+          title: '가까운 신호부터 다시 확인해 주세요',
+          description: '신호 정보가 곧 바뀔 수 있어 눈앞의 신호와 차량 흐름을 먼저 보는 편이 좋습니다.',
+          support: ['버스 여유 함께 보기', topBusEta],
+        }
+      : topBusEta === '촉박'
+        ? {
+            label: '먼저 확인할 것',
+            title: '신호를 먼저 보고 버스는 서두르지 마세요',
+            description: '이번 버스를 급하게 맞추기보다 가까운 신호와 정류장 접근을 함께 보는 편이 좋습니다.',
+            support: [signalCountdownLabel, topBusEta],
+          }
+        : {
+            label: '먼저 확인할 것',
+            title: '버스 여유를 보고 천천히 움직여 보세요',
+            description: '정류장까지 거리가 아주 멀지 않아 버스 상태와 신호를 함께 보며 이동하기 좋은 편입니다.',
+            support: [topBusEta, busDistanceLabel],
+          };
+  const guardianChecks = [
+    signalCountdownState !== 'countdown'
+      ? '신호가 곧 바뀔 수 있어 현장 신호를 다시 확인해 주세요.'
+      : `가까운 신호는 ${signalCountdownLabel} 기준입니다.`,
+    busDistanceLabel !== '거리 확인'
+      ? `정류장 접근 거리 ${busDistanceLabel}`
+      : '정류장 접근 거리를 먼저 확인해 주세요.',
+    '앱보다 실제 현장 신호와 차량 흐름을 우선해 주세요.',
+  ];
+  const soloHighlights = nearbyRows.slice(0, 4);
 
   function handleSheetPointerDown(event: PointerEvent<HTMLButtonElement>) {
     sheetDragStartY.current = event.clientY;
@@ -353,23 +337,27 @@ export function HomePage() {
   function chooseRecommendedPlace(place: RecommendedPlace) {
     setSelectedPlaceId(place.id);
     setManualLocation(place.coordinates);
-    setCompareOpen(false);
+    setConcernOpen(viewMode === 'guardian');
     setSheetState('mid');
   }
 
   function handleManualSelect(next: { lat: number; lng: number }) {
     setSelectedPlaceId(null);
     setManualLocation(next);
-    setCompareOpen(false);
+    setConcernOpen(viewMode === 'guardian');
     setSheetState('mid');
   }
 
   function handleCurrentLocation() {
     setSelectedPlaceId(null);
     requestCurrentLocation();
-    setCompareOpen(false);
+    setConcernOpen(viewMode === 'guardian');
     setSheetState('mid');
   }
+
+  useEffect(() => {
+    setConcernOpen(viewMode === 'guardian');
+  }, [viewMode]);
 
   return (
     <AppShell largeText={largeText}>
@@ -478,7 +466,7 @@ export function HomePage() {
                   <div>
                     <span>{selectedScenario.goal}</span>
                     <h1>{summaryMessage}</h1>
-                    <p>{summaryReason ?? summary.movementBurden.whyNow}</p>
+                    <p>{viewMode === 'guardian' ? summary.movementBurden.whyNow : summaryReason ?? summary.movementBurden.whyNow}</p>
                   </div>
                   <div className="score-cluster">
                     <div className="sheet-score-pill">
@@ -545,6 +533,28 @@ export function HomePage() {
 
                 {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
 
+                <section className="priority-card" aria-label="지금 먼저 볼 것">
+                  <span className="priority-card-label">{primaryFocus.label}</span>
+                  <h2>{primaryFocus.title}</h2>
+                  <p>{primaryFocus.description}</p>
+                  <div className="priority-support-grid">
+                    {primaryFocus.support.map((item) => (
+                      <span key={item}>{item}</span>
+                    ))}
+                  </div>
+                </section>
+
+                {viewMode === 'guardian' ? (
+                  <section className="guardian-check-card" aria-label="함께 다시 확인할 것">
+                    <span className="guardian-check-label">함께 다시 확인할 것</span>
+                    <div className="guardian-check-list">
+                      {guardianChecks.map((item) => (
+                        <p key={item}>{item}</p>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
                 {simpleMode ? (
                   <div className="simple-sheet-note">
                     <strong>간단히 보는 중</strong>
@@ -559,7 +569,7 @@ export function HomePage() {
                   </div>
                 ) : (
                   <div className="nearby-list">
-                    {nearbyRows.map((row) => (
+                    {(viewMode === 'solo' ? soloHighlights : nearbyRows).map((row) => (
                       <article className="nearby-row" key={row.id}>
                         <span>{row.label}</span>
                         <strong>{row.title}</strong>
@@ -568,49 +578,6 @@ export function HomePage() {
                     ))}
                   </div>
                 )}
-
-                {!simpleMode ? (
-                  <div className="compare-drawer">
-                    <button
-                      className="compare-toggle"
-                      onClick={() => setCompareOpen((open) => !open)}
-                      type="button"
-                    >
-                      <span>다른 방법도 볼까요?</span>
-                      <strong>{compareOpen ? '닫기' : '보기'}</strong>
-                    </button>
-
-                    {compareOpen ? (
-                      <div className="compare-drawer-body">
-                        <div className="target-chip-row">
-                          {COMPARE_TARGETS.map((target) => (
-                            <button
-                              className={selectedCompareTargetId === target.id ? 'active' : ''}
-                              key={target.id}
-                              onClick={() => setSelectedCompareTargetId(target.id)}
-                              type="button"
-                            >
-                              {target.label}
-                            </button>
-                          ))}
-                        </div>
-                        {isCompareLoading ? (
-                          <div className="inline-notice">비교 정보를 불러오는 중입니다.</div>
-                        ) : null}
-                        {isCompareError ? (
-                          <div className="inline-notice">비교 정보를 불러오지 못했습니다.</div>
-                        ) : null}
-                        {compare ? (
-                          <RouteCompareCard
-                            compare={compare}
-                            targetDescription={selectedCompareTarget.description}
-                            targetLabel={selectedCompareTarget.label}
-                          />
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
 
                 <div className="concern-drawer">
                   <button
@@ -624,6 +591,7 @@ export function HomePage() {
 
                   {concernOpen ? (
                     <div className="concern-panel">
+                      {viewMode === 'guardian' ? <strong>판단 이유와 확인 포인트</strong> : null}
                       <div className="concern-list">
                         {summary.movementBurden.topConcerns.length > 0 ? (
                           summary.movementBurden.topConcerns.map((concern) => <span key={concern}>{concern}</span>)
