@@ -91,7 +91,7 @@ function getMockSignals(origin: Coordinates): SignalData[] {
   return [
     {
       intersectionId: 'sig-1',
-      intersectionName: '시청역 2번 출구 앞',
+      intersectionName: '가까운 횡단보도',
       ...offsetCoordinates(origin, 0.0008, -0.0007),
       pedestrianSignalStatus: 'GREEN',
       pedestrianSignalStatusLabel: '보행 가능',
@@ -105,7 +105,7 @@ function getMockSignals(origin: Coordinates): SignalData[] {
     },
     {
       intersectionId: 'sig-2',
-      intersectionName: '서울광장 횡단보도',
+      intersectionName: '주변 횡단보도',
       ...offsetCoordinates(origin, -0.0005, 0.001),
       pedestrianSignalStatus: 'RED',
       pedestrianSignalStatusLabel: '보행 불가',
@@ -119,7 +119,7 @@ function getMockSignals(origin: Coordinates): SignalData[] {
     },
     {
       intersectionId: 'sig-3',
-      intersectionName: '덕수궁 돌담길 입구',
+      intersectionName: '인근 횡단보도',
       ...offsetCoordinates(origin, 0.0011, 0.0004),
       pedestrianSignalStatus: 'UNKNOWN',
       pedestrianSignalStatusLabel: '정보 없음',
