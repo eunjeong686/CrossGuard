@@ -11,6 +11,7 @@ import { mobilityRouter } from './routes/mobility.js';
 import { routesCompareRouter } from './routes/routesCompare.js';
 import { signalsRouter } from './routes/signals.js';
 import { summaryRouter } from './routes/summary.js';
+import { getUlsanCoverageSnapshot } from './services/ulsanCoverageService.js';
 import type { ServiceStatus } from './types/internal.js';
 import { getErrorMessage, HttpError } from './utils/errors.js';
 import { buildResponse } from './utils/response.js';
@@ -49,47 +50,54 @@ app.use('/api/signals', signalsRouter);
 app.use('/api/buses', busesRouter);
 app.use('/api/mobility-support', mobilityRouter);
 app.use('/api/routes', routesCompareRouter);
-app.get('/api/meta/status', (_request, response) => {
-  const services: ServiceStatus[] = [
-    {
-      name: 'signals',
-      mode: env.publicData.mode,
-      datasetUrl: env.publicData.docs.signal,
-      stdgCd: env.publicData.signalStdgCd,
-      endpointConfigured: Boolean(env.publicData.signalApiUrl),
-      apiKeyConfigured: Boolean(env.publicData.serviceKey),
-      liveAdapterReady: true,
-      fallbackAvailable: true,
-    },
-    {
-      name: 'buses',
-      mode: env.publicData.mode,
-      datasetUrl: env.publicData.docs.bus,
-      stdgCd: env.publicData.busStdgCd,
-      endpointConfigured: Boolean(env.publicData.busApiUrl),
-      apiKeyConfigured: Boolean(env.publicData.serviceKey),
-      liveAdapterReady: true,
-      fallbackAvailable: true,
-    },
-    {
-      name: 'mobility',
-      mode: env.publicData.mode,
-      datasetUrl: env.publicData.docs.mobility,
-      stdgCd: env.publicData.mobilityStdgCd,
-      endpointConfigured: Boolean(env.publicData.mobilityApiUrl),
-      apiKeyConfigured: Boolean(env.publicData.serviceKey),
-      liveAdapterReady: true,
-      fallbackAvailable: true,
-    },
-  ];
+app.get('/api/meta/status', async (_request, response, next) => {
+  try {
+    const services: ServiceStatus[] = [
+      {
+        name: 'signals',
+        mode: env.publicData.mode,
+        datasetUrl: env.publicData.docs.signal,
+        stdgCd: env.publicData.signalStdgCd,
+        endpointConfigured: Boolean(env.publicData.signalApiUrl),
+        apiKeyConfigured: Boolean(env.publicData.serviceKey),
+        liveAdapterReady: true,
+        fallbackAvailable: true,
+      },
+      {
+        name: 'buses',
+        mode: env.publicData.mode,
+        datasetUrl: env.publicData.docs.bus,
+        stdgCd: env.publicData.busStdgCd,
+        endpointConfigured: Boolean(env.publicData.busApiUrl),
+        apiKeyConfigured: Boolean(env.publicData.serviceKey),
+        liveAdapterReady: true,
+        fallbackAvailable: true,
+      },
+      {
+        name: 'mobility',
+        mode: env.publicData.mode,
+        datasetUrl: env.publicData.docs.mobility,
+        stdgCd: env.publicData.mobilityStdgCd,
+        endpointConfigured: Boolean(env.publicData.mobilityApiUrl),
+        apiKeyConfigured: Boolean(env.publicData.serviceKey),
+        liveAdapterReady: true,
+        fallbackAvailable: true,
+      },
+    ];
 
-  response.json(
-    buildResponse({
-      dataMode: env.publicData.mode,
-      timeoutMs: env.publicData.timeoutMs,
-      services,
-    }),
-  );
+    const ulsanCoverage = await getUlsanCoverageSnapshot();
+
+    response.json(
+      buildResponse({
+        dataMode: env.publicData.mode,
+        timeoutMs: env.publicData.timeoutMs,
+        services,
+        ulsanCoverage,
+      }),
+    );
+  } catch (error) {
+    next(error);
+  }
 });
 app.get('/api/meta/disclaimer', (_request, response) => {
   response.json(

@@ -2,13 +2,14 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { AppShell } from '../components/layout/AppShell';
 import { SummaryMap } from '../components/map/SummaryMap';
 import { useLocation } from '../hooks/useLocation';
+import { useMetaStatus } from '../hooks/useMetaStatus';
 import { useSummary } from '../hooks/useSummary';
 import { useUiStore } from '../stores/uiStore';
 import { formatRelativeTime } from '../utils/format';
 import type { PaceProfile, Persona } from '../types/api';
 
 type RecommendedPlace = {
-  id: 'ulsan-live';
+  id: string;
   label: string;
   description: string;
   currentLabel: string;
@@ -40,14 +41,33 @@ type ModeOption = {
 
 const RECOMMENDED_PLACES: RecommendedPlace[] = [
   {
-    id: 'ulsan-live',
-    label: '울산 신호·버스 보기',
-    currentLabel: '울산 주변',
-    description: '걷기 전 신호와 버스 정보를 먼저 살펴봅니다.',
+    id: 'ulsan-cityhall',
+    label: '울산 시청 주변 보기',
+    currentLabel: '울산 시청 주변',
+    description: '울산 중심권 신호와 버스를 먼저 확인합니다.',
     coordinates: { lat: 35.5384, lng: 129.3114 },
     signalStdgCd: '3100000000',
     busStdgCd: '3100000000',
-    mobilityStdgCd: '3100000000',
+    supportedCards: ['signals', 'buses'],
+  },
+  {
+    id: 'ulsan-samsan',
+    label: '삼산동 주변 보기',
+    currentLabel: '삼산동 주변',
+    description: '상업권 이동 동선에서 신호와 버스를 확인합니다.',
+    coordinates: { lat: 35.5389, lng: 129.3356 },
+    signalStdgCd: '3100000000',
+    busStdgCd: '3100000000',
+    supportedCards: ['signals', 'buses'],
+  },
+  {
+    id: 'ulsan-taehwa',
+    label: '태화강역 주변 보기',
+    currentLabel: '태화강역 주변',
+    description: '환승 거점 기준 신호와 버스 상태를 확인합니다.',
+    coordinates: { lat: 35.5397, lng: 129.3535 },
+    signalStdgCd: '3100000000',
+    busStdgCd: '3100000000',
     supportedCards: ['signals', 'buses'],
   },
 ];
@@ -82,8 +102,23 @@ function getSupportedArea(coordinates: { lat: number; lng: number }) {
   );
 }
 
-function getPlaceProfileById(id: RecommendedPlace['id']) {
-  return RECOMMENDED_PLACES.find((place) => place.id === id) ?? RECOMMENDED_PLACES[0];
+function toRecommendedPlace(raw: {
+  id: string;
+  label: string;
+  description: string;
+  lat: number;
+  lng: number;
+}): RecommendedPlace {
+  return {
+    id: raw.id,
+    label: `${raw.label} 보기`,
+    currentLabel: raw.label,
+    description: raw.description,
+    coordinates: { lat: raw.lat, lng: raw.lng },
+    signalStdgCd: '3100000000',
+    busStdgCd: '3100000000',
+    supportedCards: ['signals', 'buses'],
+  };
 }
 
 function getServiceSourceLabel(source?: 'live' | 'mock' | 'disabled') {
@@ -128,12 +163,20 @@ export function HomePage() {
   const [displayRemainingSeconds, setDisplayRemainingSeconds] = useState<number | null>(null);
   const [signalCountdownState, setSignalCountdownState] = useState<SignalCountdownState>('unknown');
   const sheetDragStartY = useRef<number | null>(null);
+  const { data: metaStatus } = useMetaStatus();
   const { largeText, simpleMode, setLargeText, setSimpleMode } = useUiStore();
+  const selectionPolicy = metaStatus?.data.ulsanCoverage.selectionPolicy ?? 'preset';
+  const coverageScore = metaStatus?.data.ulsanCoverage.coverageScore ?? 0;
+  const recommendedPlaces =
+    metaStatus?.data.ulsanCoverage.recommendedPlaces.length
+      ? metaStatus.data.ulsanCoverage.recommendedPlaces.map(toRecommendedPlace).slice(0, 3)
+      : RECOMMENDED_PLACES;
+  const defaultRecommendedPlace = recommendedPlaces[0] ?? RECOMMENDED_PLACES[0];
   const selectedPlace =
-    RECOMMENDED_PLACES.find((place) => place.id === selectedPlaceId) ?? null;
+    recommendedPlaces.find((place) => place.id === selectedPlaceId) ?? null;
   const activeCoordinates = selectedPlace?.coordinates ?? coordinates;
   const supportedArea = getSupportedArea(activeCoordinates);
-  const activePlaceProfile = selectedPlace ?? (supportedArea ? getPlaceProfileById(supportedArea.id) : null);
+  const activePlaceProfile = selectedPlace ?? (supportedArea ? defaultRecommendedPlace : null);
   const isSupportedArea = Boolean(activePlaceProfile);
   const visibleCards = activePlaceProfile?.supportedCards ?? [];
   const viewMode: ViewMode = largeText || simpleMode ? 'accessible' : 'default';
@@ -168,7 +211,10 @@ export function HomePage() {
     summary?.dataContext.serviceSources.buses === 'live'
       ? 'live'
       : 'limited';
-  const canPickLocation = isSupportedArea && dataReliability === 'live';
+  const canPickLocation =
+    isSupportedArea &&
+    dataReliability === 'live' &&
+    selectionPolicy === 'free';
 
   useEffect(() => {
     const remainingSeconds = summary?.topSignal?.remainingSeconds;
@@ -419,11 +465,11 @@ export function HomePage() {
                 <span>지원 지역 안내</span>
                 <h1>아직 이 위치는 지원 범위 밖이에요</h1>
                 <p>
-                  지금은 신호와 버스 실데이터가 안정적으로 확인된 울산을 중심으로 안내합니다.
+                  지금은 신호와 버스 정보가 안정적으로 확인된 울산을 중심으로 안내합니다.
                   아래에서 바로 확인할 수 있어요.
                 </p>
                 <div className="verified-place-grid">
-                  {RECOMMENDED_PLACES.map((place) => (
+                  {recommendedPlaces.map((place) => (
                     <button
                       className="primary-button"
                       key={place.id}
@@ -435,9 +481,9 @@ export function HomePage() {
                   ))}
                 </div>
                 {errorMessage ? <div className="inline-notice">{errorMessage}</div> : null}
-                {dataReliability === 'limited' ? (
+                {selectionPolicy === 'preset' ? (
                   <div className="inline-notice">
-                    지금은 검증된 기준 위치 정보를 우선 보여주고 있어요.
+                    실시간 확인이 불안정해 검증된 위치를 먼저 보여드려요.
                   </div>
                 ) : null}
               </div>
@@ -531,7 +577,9 @@ export function HomePage() {
                     onClick={() => canPickLocation && setSelectionMode(!selectionMode)}
                     type="button"
                   >
-                    {canPickLocation ? (selectionMode ? '선택 마치기' : '지도에서 고르기') : '위치 선택 제한'}
+                    {canPickLocation
+                      ? (selectionMode ? '선택 마치기' : '지도에서 고르기')
+                      : (selectionPolicy === 'preset' ? '검증된 위치만 사용' : '위치 선택 제한')}
                   </button>
                   <button
                     className={`chip-button${viewMode === 'accessible' ? ' active' : ''}`}
@@ -542,10 +590,12 @@ export function HomePage() {
                   </button>
                 </div>
 
-                {dataReliability === 'limited' ? (
+                {dataReliability === 'limited' || selectionPolicy === 'preset' ? (
                   <div className="inline-notice">
-                    지금은 검증된 기준 위치 정보를 우선 보여주고 있어요. 위치별 비교는 실시간 연동이
-                    안정적일 때 다시 열립니다.
+                    실시간 확인이 불안정해 검증된 위치를 먼저 보여드려요.
+                    {selectionPolicy === 'preset'
+                      ? ` 현재 울산 live 커버리지 ${coverageScore}% 기준으로 프리셋 모드예요.`
+                      : ''}
                   </div>
                 ) : null}
 

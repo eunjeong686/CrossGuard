@@ -131,6 +131,33 @@ export type ServiceStatus = {
   fallbackAvailable: boolean;
 };
 
+export type UlsanPresetPlace = {
+  id: string;
+  label: string;
+  description: string;
+  lat: number;
+  lng: number;
+};
+
+export type UlsanCoverageSnapshot = {
+  threshold: number;
+  rounds: number;
+  sampleCount: number;
+  liveCount: number;
+  coverageScore: number;
+  selectionPolicy: 'free' | 'preset';
+  updatedAt: string;
+  recommendedPlaces: UlsanPresetPlace[];
+  unstablePoints: Array<{
+    id: string;
+    label: string;
+    lat: number;
+    lng: number;
+    liveSuccess: number;
+    totalChecks: number;
+  }>;
+};
+
 export type RouteCompareOption = {
   id: 'bus-priority' | 'signal-priority';
   label: string;

@@ -7,7 +7,7 @@ import { getDistanceMeters, offsetCoordinates } from '../utils/distance.js';
 import { parseNumberValue, parseStringValue, parseTimestamp } from '../utils/publicData.js';
 import { fetchAllPublicApiItems } from './publicApiClient.js';
 
-const busCache = createTtlCache<BusData[]>();
+const busCache = createTtlCache<ServiceResult<BusData>>();
 
 function getEtaCategory({
   walkingDistanceMeters,
@@ -219,19 +219,17 @@ export async function getNearbyBuses(
   const cached = busCache.get(cacheKey);
 
   if (cached) {
-    return {
-      items: cached,
-      source: env.publicData.mode === 'mock' ? 'mock' : 'live',
-    };
+    return cached;
   }
 
   if (env.publicData.mode === 'mock') {
     const mockData = getMockBuses(origin);
-    busCache.set(cacheKey, mockData, env.publicData.busCacheTtlMs);
-    return {
+    const result: ServiceResult<BusData> = {
       items: mockData,
       source: 'mock',
     };
+    busCache.set(cacheKey, result, env.publicData.busCacheTtlMs);
+    return result;
   }
 
   try {
@@ -255,19 +253,21 @@ export async function getNearbyBuses(
       throw new HttpError(502, '버스 실데이터에서 주변 차량을 찾지 못했습니다.');
     }
 
-    busCache.set(cacheKey, nearby, env.publicData.busCacheTtlMs);
-    return {
+    const result: ServiceResult<BusData> = {
       items: nearby,
       source: 'live',
     };
+    busCache.set(cacheKey, result, env.publicData.busCacheTtlMs);
+    return result;
   } catch (error) {
     if (env.publicData.mode === 'hybrid') {
       const fallback = getMockBuses(origin);
-      busCache.set(cacheKey, fallback, env.publicData.busCacheTtlMs);
-      return {
+      const result: ServiceResult<BusData> = {
         items: fallback,
         source: 'mock',
       };
+      busCache.set(cacheKey, result, Math.min(env.publicData.busCacheTtlMs, 5_000));
+      return result;
     }
 
     throw error;

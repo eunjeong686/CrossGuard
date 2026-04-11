@@ -7,7 +7,7 @@ import { getDistanceMeters, offsetCoordinates } from '../utils/distance.js';
 import { parseNumberValue, parseStringValue, parseTimestamp } from '../utils/publicData.js';
 import { fetchAllPublicApiItems } from './publicApiClient.js';
 
-const signalCache = createTtlCache<SignalData[]>();
+const signalCache = createTtlCache<ServiceResult<SignalData>>();
 const SIGNAL_DIRECTIONS = [
   { key: 'nt', label: 'N' },
   { key: 'et', label: 'E' },
@@ -236,19 +236,17 @@ export async function getNearbySignals(
   const cached = signalCache.get(cacheKey);
 
   if (cached) {
-    return {
-      items: cached,
-      source: env.publicData.mode === 'mock' ? 'mock' : 'live',
-    };
+    return cached;
   }
 
   if (env.publicData.mode === 'mock') {
     const mockData = getMockSignals(origin);
-    signalCache.set(cacheKey, mockData, env.publicData.signalCacheTtlMs);
-    return {
+    const result: ServiceResult<SignalData> = {
       items: mockData,
       source: 'mock',
     };
+    signalCache.set(cacheKey, result, env.publicData.signalCacheTtlMs);
+    return result;
   }
 
   try {
@@ -270,19 +268,21 @@ export async function getNearbySignals(
       throw new HttpError(502, '신호등 실데이터에서 위치 좌표가 유효한 교차로를 찾지 못했습니다.');
     }
 
-    signalCache.set(cacheKey, nearby, env.publicData.signalCacheTtlMs);
-    return {
+    const result: ServiceResult<SignalData> = {
       items: nearby,
       source: 'live',
     };
+    signalCache.set(cacheKey, result, env.publicData.signalCacheTtlMs);
+    return result;
   } catch (error) {
     if (env.publicData.mode === 'hybrid') {
       const fallback = getMockSignals(origin);
-      signalCache.set(cacheKey, fallback, env.publicData.signalCacheTtlMs);
-      return {
+      const result: ServiceResult<SignalData> = {
         items: fallback,
         source: 'mock',
       };
+      signalCache.set(cacheKey, result, Math.min(env.publicData.signalCacheTtlMs, 5_000));
+      return result;
     }
 
     throw error;

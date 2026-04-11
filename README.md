@@ -59,6 +59,12 @@ npm run dev
 
 앱 화면에서는 사용자에게 개발자용 상태값을 노출하지 않고, 현재 위치가 울산이면 신호·버스 데이터 묶음을 바로 보여줍니다. 지원 범위 밖 위치에서는 무리하게 전국 데이터를 섞어 보여주지 않고, 울산 신호·버스 확인 흐름으로 안내합니다.
 
+## 울산 데모 노출 정책
+
+- 서버는 울산 내부 샘플 좌표를 기준으로 신호+버스 동시 live 커버리지를 계산합니다.
+- 커버리지 `70% 이상`이면 `자유 위치 선택`을 열고, 미만이면 `검증된 프리셋 3곳` 중심으로 안내합니다.
+- `hybrid` 모드에서도 캐시에 `source(live/mock)`를 함께 저장해, live/mock 불일치 표시가 생기지 않도록 처리합니다.
+
 ## 실데이터 검증 근거
 
 - 2026-04-10 기준 전국 법정동 시군구 코드 270개를 별도 검증 스크립트로 재스캔했습니다.
@@ -159,6 +165,7 @@ npm run preview -- --host 0.0.0.0
 ```bash
 node scripts/scan-live-regions.mjs --limit 5
 node scripts/scan-live-regions.mjs --all --concurrency 2 --delay-ms 120
+node scripts/scan-ulsan-coverage.mjs --base-url=http://localhost:8787 --rounds=2 --threshold=70
 ```
 
 - 스크립트 위치: `scripts/scan-live-regions.mjs`

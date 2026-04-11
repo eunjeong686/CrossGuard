@@ -141,3 +141,46 @@ export type RouteComparePayload = {
   recommendedOptionId: RouteCompareOption['id'];
   options: RouteCompareOption[];
 };
+
+export type MetaServiceStatus = {
+  name: 'signals' | 'buses' | 'mobility';
+  mode: 'mock' | 'hybrid' | 'live';
+  datasetUrl: string;
+  stdgCd: string;
+  endpointConfigured: boolean;
+  apiKeyConfigured: boolean;
+  liveAdapterReady: boolean;
+  fallbackAvailable: boolean;
+};
+
+export type UlsanCoveragePayload = {
+  threshold: number;
+  rounds: number;
+  sampleCount: number;
+  liveCount: number;
+  coverageScore: number;
+  selectionPolicy: 'free' | 'preset';
+  updatedAt: string;
+  recommendedPlaces: Array<{
+    id: string;
+    label: string;
+    description: string;
+    lat: number;
+    lng: number;
+  }>;
+  unstablePoints: Array<{
+    id: string;
+    label: string;
+    lat: number;
+    lng: number;
+    liveSuccess: number;
+    totalChecks: number;
+  }>;
+};
+
+export type MetaStatusPayload = {
+  dataMode: 'mock' | 'hybrid' | 'live';
+  timeoutMs: number;
+  services: MetaServiceStatus[];
+  ulsanCoverage: UlsanCoveragePayload;
+};
