@@ -13,8 +13,12 @@ services:
         value: "*"
       - key: PUBLIC_DATA_MODE
         value: hybrid
+      - key: VITE_ULSAN_SELECTION_POLICY
+        value: preset
+      - key: VITE_ULSAN_COVERAGE_SCORE
+        value: "0"
       - key: PUBLIC_DATA_TIMEOUT_MS
-        value: "5000"
+        value: "15000"
       - key: SIGNAL_API_URL
         value: https://apis.data.go.kr/B551982/rti
       - key: BUS_API_URL
@@ -22,9 +26,9 @@ services:
       - key: MOBILITY_API_URL
         value: https://apis.data.go.kr/B551982/tsdo_v2
       - key: SIGNAL_STDG_CD
-        value: "1100000000"
+        value: "3100000000"
       - key: BUS_STDG_CD
-        value: "1100000000"
+        value: "3100000000"
       - key: MOBILITY_STDG_CD
         value: "1100000000"
       - key: SIGNAL_CACHE_TTL_MS
